@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspaces/project:cached
+    command: sleep infinity
+    depends_on:
+      - postgres
+    networks:
+      - betopia-dev
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: betopia_lms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - betopia-postgres-data:/var/lib/postgresql/data
+    networks:
+      - betopia-dev
+
+volumes:
+  betopia-postgres-data:
+
+networks:
+  betopia-dev:

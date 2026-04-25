@@ -1,0 +1,12 @@
+{
+    "course_id":  "87",
+    "module_id":  "286",
+    "lesson_id":  "512",
+    "assessment_id":  "153",
+    "live_class_id":  "100",
+    "lesson_completed":  "Lesson marked as completed.",
+    "submission_status":  "Assessment submitted successfully.",
+    "certificate_status":  "Certificate issued successfully.",
+    "billing_plan":  "Growth",
+    "reminder_status":  "Compliance reminder workflow completed."
+}

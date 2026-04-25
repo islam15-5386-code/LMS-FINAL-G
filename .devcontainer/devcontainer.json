@@ -1,0 +1,44 @@
+{
+  "name": "Betopia LMS Fullstack",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/project",
+  "remoteUser": "node",
+  "forwardPorts": [3010, 8000, 5432],
+  "portsAttributes": {
+    "3010": {
+      "label": "Next.js frontend",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "Laravel backend",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-vscode-remote.remote-containers",
+        "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "php.validate.executablePath": "/usr/bin/php"
+      }
+    }
+  },
+  "containerEnv": {
+    "COMPOSER_MEMORY_LIMIT": "-1"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": "bash .devcontainer/post-attach.sh"
+}
