@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     * Run: php artisan migrate:fresh --seed
      */
     public function run(): void
     {
@@ -25,6 +26,7 @@ class DatabaseSeeder extends Seeder
             BillingSeeder::class,
             NotificationSeeder::class,
             AuditLogSeeder::class,
+            DemoLmsSeeder::class,   // Adds Betopia Academy demo with Bangladeshi names
         ]);
     }
 }
