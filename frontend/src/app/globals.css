@@ -105,7 +105,8 @@
   }
 
   .dash-sidebar-header {
-    @apply flex items-center gap-3 px-5 py-5 border-b border-white/8;
+    @apply flex items-center gap-3 px-5 py-5 border-b;
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   .dash-sidebar-logo {
@@ -294,11 +295,20 @@
   }
 
   .btn-danger {
-    @apply btn text-destructive border border-destructive/30 bg-destructive/8 hover:bg-destructive/15;
+    @apply btn text-destructive border;
+    border-color: hsl(var(--destructive) / 0.3);
+    background: hsl(var(--destructive) / 0.08);
+  }
+  .btn-danger:hover {
+    background: hsl(var(--destructive) / 0.15);
   }
 
   .btn-ghost {
-    @apply btn text-muted-foreground hover:text-foreground hover:bg-muted/60;
+    @apply btn text-muted-foreground;
+  }
+  .btn-ghost:hover {
+    @apply text-foreground;
+    background: hsl(var(--muted) / 0.6);
   }
 
   /* Form inputs */
@@ -394,6 +404,12 @@
   /* Responsive sidebar toggle */
   .dash-sidebar-mobile-hidden {
     @apply -translate-x-full;
+  }
+
+  /* User mini-card fix */
+  .sidebar-user-card {
+    @apply px-4 py-3 mx-3 mt-3 rounded-xl;
+    background: rgba(255, 255, 255, 0.06);
   }
 
   @media (max-width: 1023px) {
