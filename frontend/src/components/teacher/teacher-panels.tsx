@@ -18,8 +18,7 @@ import {
   fallbackQuestionBank,
   type Course,
   type FallbackQuestionBankItem,
-  type AssessmentType,
-  type Role
+  type AssessmentType
 } from "@/lib/mock-lms";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import {

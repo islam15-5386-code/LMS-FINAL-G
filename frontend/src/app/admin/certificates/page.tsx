@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Award, Download, XCircle, Search } from "lucide-react";
+import { Award, Download, XCircle } from "lucide-react";
 import {
   DashboardLayout, PageHeader, StatusBadge, SearchBar, EmptyState, StatsCard
 } from "@/components/dashboard/DashboardLayout";

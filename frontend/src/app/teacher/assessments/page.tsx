@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Upload, BookOpen, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Upload, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { DashboardLayout, PageHeader, StatusBadge, EmptyState } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { readNoteFile } from "@/lib/utils/lms-helpers";
-import { fetchTeacherAssessmentBootstrap, uploadTeacherNote } from "@/lib/api/lms-backend";
-import type { Assessment } from "@/lib/mock-lms";
 
 type AssessmentType = "MCQ" | "Essay" | "Short Answer";
 

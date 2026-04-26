@@ -87,7 +87,7 @@ export default function StudentDashboardPage() {
             {enrolledCourses.length === 0 ? (
               <div className="text-center py-8">
                 <BookOpen className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">You haven't enrolled in any courses yet.</p>
+                <p className="text-sm text-muted-foreground">You haven&apos;t enrolled in any courses yet.</p>
                 <Link href="/catalog" className="btn-accent mt-4 inline-flex">Browse Courses</Link>
               </div>
             ) : (

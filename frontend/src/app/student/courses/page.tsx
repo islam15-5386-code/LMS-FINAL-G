@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, CheckCircle, Lock, Play, FileText } from "lucide-react";
-import { DashboardLayout, PageHeader, ProgressBar, StatusBadge, EmptyState } from "@/components/dashboard/DashboardLayout";
+import { BookOpen, CheckCircle, Play, FileText } from "lucide-react";
+import { DashboardLayout, PageHeader, ProgressBar, EmptyState } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { percentageForStudent } from "@/lib/utils/lms-helpers";
 import Link from "next/link";

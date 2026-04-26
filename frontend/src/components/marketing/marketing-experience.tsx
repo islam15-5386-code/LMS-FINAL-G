@@ -24,7 +24,6 @@ import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider"
 import {
   Badge,
   PrimaryButton,
-  SecondaryButton,
   Section,
   StatCard,
   SelectInput,

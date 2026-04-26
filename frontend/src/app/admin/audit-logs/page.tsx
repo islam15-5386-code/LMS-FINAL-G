@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, Search } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { DashboardLayout, PageHeader, SearchBar, EmptyState } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 

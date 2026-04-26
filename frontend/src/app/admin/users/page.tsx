@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Users, Filter } from "lucide-react";
 import {
-  DashboardLayout, PageHeader, StatusBadge, SearchBar, EmptyState
+  DashboardLayout, PageHeader, SearchBar, EmptyState
 } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 

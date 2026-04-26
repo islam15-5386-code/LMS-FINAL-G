@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { BookOpen, Plus, Search, Filter } from "lucide-react";
+import { BookOpen, Plus, Filter } from "lucide-react";
 import {
   DashboardLayout, PageHeader, StatusBadge, SearchBar, EmptyState
 } from "@/components/dashboard/DashboardLayout";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -196,7 +197,6 @@ function Badge({ children, color = "#E8F5FF", textColor = "#185FA5" }: { childre
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function SmartLMSHomePage() {
   const { state, currentUser, isAuthenticated, resetDemo } = useMockLms();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<"admin" | "teacher" | "student">("admin");
   const activeLearners = state.billing.activeStudents;
@@ -313,13 +313,13 @@ export default function SmartLMSHomePage() {
 
           {/* CTA buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <a
+            <Link
               href="/login"
               style={{ fontSize: 14, fontWeight: 500, color: "#374151", textDecoration: "none", padding: "8px 16px" }}
             >
               Sign in
-            </a>
-            <a
+            </Link>
+            <Link
               href="/demo"
               style={{
                 fontSize: 14,
@@ -331,11 +331,11 @@ export default function SmartLMSHomePage() {
                 borderRadius: 8,
                 transition: "background 0.2s",
               }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.background = "#CF8F1A")}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.background = "#E8A020")}
+                onMouseEnter={(e) => ((e.target as HTMLElement).style.background = "#CF8F1A")}
+                onMouseLeave={(e) => ((e.target as HTMLElement).style.background = "#E8A020")}
             >
               Book demo
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
@@ -350,7 +350,7 @@ export default function SmartLMSHomePage() {
             ["Certificates", "/admin/certificates"],
             ["Billing", "/admin/billing"],
           ].map(([tab, href]) => (
-            <a
+            <Link
               key={tab}
               href={href}
               style={{
@@ -375,7 +375,7 @@ export default function SmartLMSHomePage() {
               }}
             >
               {tab}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -489,7 +489,7 @@ export default function SmartLMSHomePage() {
               >
                 Dashboard Access
               </a>
-              <a
+              <Link
                 href="/teacher/assessments/ai-generate"
                 style={{
                   background: "#fff",
@@ -506,7 +506,7 @@ export default function SmartLMSHomePage() {
                 onMouseLeave={(e) => ((e.target as HTMLElement).style.borderColor = "#E5E7EB")}
               >
                 AI Studio →
-              </a>
+              </Link>
               <button
                 type="button"
                 onClick={resetDemo}
@@ -681,7 +681,7 @@ export default function SmartLMSHomePage() {
             </div>
 
             <div style={{ display: "flex", gap: 12 }}>
-              <a
+              <Link
                 href="/catalog"
                 style={{
                   background: "#E8A020",
@@ -694,8 +694,8 @@ export default function SmartLMSHomePage() {
                 }}
               >
                 Explore courses
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/catalog"
                 style={{
                   background: "#fff",
@@ -709,7 +709,7 @@ export default function SmartLMSHomePage() {
                 }}
               >
                 Learner login
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -751,9 +751,9 @@ export default function SmartLMSHomePage() {
                 <div style={{ fontSize: 28, marginBottom: 14, position: "relative" }}>{f.icon}</div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1A1A2E", marginBottom: 8 }}>{f.title}</h3>
                 <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6 }}>{f.desc}</p>
-                <a href={featureRoutes[f.title] ?? "/catalog"} style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 600, color: "#E8A020", textDecoration: "none" }}>
+                <Link href={featureRoutes[f.title] ?? "/catalog"} style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 600, color: "#E8A020", textDecoration: "none" }}>
                   Open now →
-                </a>
+                </Link>
               </div>
             ))}
           </div>
@@ -765,7 +765,7 @@ export default function SmartLMSHomePage() {
         <h2 style={{ fontSize: "clamp(22px, 3vw, 36px)", fontWeight: 800, color: "#fff", marginBottom: 20 }}>
           Providing High Quality Learning Tools
         </h2>
-        <a
+        <Link
           href="/catalog"
           style={{
             display: "inline-block",
@@ -779,7 +779,7 @@ export default function SmartLMSHomePage() {
           }}
         >
           Discover more
-        </a>
+        </Link>
       </section>
 
       {/* ── Workspace chooser ── */}
@@ -822,12 +822,12 @@ export default function SmartLMSHomePage() {
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: "#1A1A2E", marginBottom: 8 }}>{ws.title}</h3>
                 <p style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 20 }}>{ws.desc}</p>
-                <a
+                <Link
                   href={activeTab === "admin" ? "/admin/dashboard" : activeTab === "teacher" ? "/teacher/dashboard" : "/student/dashboard"}
                   style={{ fontSize: 14, fontWeight: 600, color: "#E8A020", textDecoration: "none" }}
                 >
                   Open workspace →
-                </a>
+                </Link>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {ws.items.map((item) => (

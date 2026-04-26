@@ -89,7 +89,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <p className="text-sm text-white/75 leading-relaxed italic">
-              "Smart LMS transformed how we manage our 500 students. The AI assessment tools alone save us hours every week."
+              &ldquo;Smart LMS transformed how we manage our 500 students. The AI assessment tools alone save us hours every week.&rdquo;
             </p>
             <div className="flex items-center gap-3 mt-4">
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0" style={{ background: "linear-gradient(135deg, #0f766e, #E8A020)" }}>
@@ -206,7 +206,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-foreground font-semibold hover:underline">Create one</Link>
           </p>
         </div>

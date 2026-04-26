@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Download, ExternalLink } from "lucide-react";
+import { Award, Download } from "lucide-react";
 import { DashboardLayout, PageHeader, EmptyState } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { buildCertificateHtml, downloadHtmlFile } from "@/lib/utils/lms-helpers";
