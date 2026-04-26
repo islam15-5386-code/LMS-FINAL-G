@@ -13,20 +13,17 @@ import {
   Check,
   Clock3,
   MoonStar,
-  Search,
   Sparkles,
   SunMedium,
   Users,
   Video
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   planMatrix,
-  type Course,
   type Role
 } from "@/lib/mock-lms";
-import { fetchPublicCoursesFromBackend } from "@/lib/api/lms-backend";
 import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
 import { useThemeMode } from "@/providers/theme-provider";
 
@@ -347,10 +344,6 @@ function GenericMarketing({ slug }: { slug: string }) {
 export function HomeExperience() {
   const { state, currentUser, isAuthenticated, resetDemo } = useMockLms();
   const { mounted, theme, toggleTheme } = useThemeMode();
-  const [courseSearch, setCourseSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<Course[]>([]);
-  const [searchBusy, setSearchBusy] = useState(false);
-  const [searchError, setSearchError] = useState("");
   const activeLearners = state.billing.activeStudents;
   const publishedCourses = state.courses.filter((course) => course.status === "published").length;
   const totalLessons = state.courses.reduce((total, course) => total + course.modules.reduce((sum, module) => sum + module.lessons.length, 0), 0);
@@ -366,6 +359,18 @@ export function HomeExperience() {
     (left, right) => new Date(left.startAt).getTime() - new Date(right.startAt).getTime()
   );
   const dashboardHref = isAuthenticated ? dashboardPathForRole(currentUser?.role) : "/login";
+  const primaryWorkspaceHref = isAuthenticated ? dashboardHref : "/signup";
+  const liveWorkspaceHref = isAuthenticated
+    ? currentUser?.role === "student"
+      ? "/student/live-classes"
+      : "/teacher/live-classes"
+    : "/login?next=%2Fteacher%2Flive-classes";
+  const pricingAction =
+    currentUser?.role === "admin"
+      ? { href: "/admin/billing", label: "Open billing" }
+      : isAuthenticated
+        ? { href: dashboardHref, label: "Open dashboard" }
+        : { href: "/signup", label: "Start now" };
   const partnerLabels = [
     state.branding.tenantName,
     "Corporate Training",
@@ -403,45 +408,6 @@ export function HomeExperience() {
     { label: "Published courses", value: `${publishedCourses}+` },
     { label: "Course lessons", value: `${totalLessons}+` }
   ];
-
-  useEffect(() => {
-    const term = courseSearch.trim();
-
-    if (term.length === 0) {
-      setSearchResults([]);
-      setSearchBusy(false);
-      setSearchError("");
-      return;
-    }
-
-    let cancelled = false;
-    setSearchBusy(true);
-    setSearchError("");
-
-    const timer = window.setTimeout(async () => {
-      try {
-        const courses = await fetchPublicCoursesFromBackend(term);
-
-        if (!cancelled) {
-          setSearchResults(courses);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setSearchResults([]);
-          setSearchError(error instanceof Error ? error.message : "Course search failed.");
-        }
-      } finally {
-        if (!cancelled) {
-          setSearchBusy(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [courseSearch]);
 
   return (
     <div className="bg-background text-foreground">
@@ -481,33 +447,17 @@ export function HomeExperience() {
                 </p>
               </div>
             </Link>
-            <div className="hidden items-center gap-5 lg:flex">
-              <a href="#courses" className="text-sm font-medium text-black transition hover:text-black/75">Explore</a>
-              <a href="#pricing" className="text-sm font-medium text-black transition hover:text-black/75">Degrees</a>
-            </div>
+          <div className="hidden items-center gap-5 lg:flex">
+            <a href="#courses" className="text-sm font-medium text-black transition hover:text-black/75">Explore</a>
+            <a href="#pricing" className="text-sm font-medium text-black transition hover:text-black/75">Degrees</a>
           </div>
-
-          <div className="hidden min-w-[360px] flex-1 items-center justify-center xl:flex">
-            <div className="flex w-full max-w-[640px] items-center gap-3 rounded-full border border-black/10 bg-white px-5 py-3 shadow-soft">
-              <Search className="h-4 w-4 text-black/70" />
-              <input
-                type="search"
-                value={courseSearch}
-                onChange={(event) => setCourseSearch(event.target.value)}
-                placeholder="What do you want to learn?"
-                className="w-full bg-transparent text-sm text-black outline-none placeholder:text-black/50"
-              />
-              <span className="ml-auto grid h-8 w-8 place-items-center rounded-full bg-[#b9852b] text-white">
-                <Search className="h-3.5 w-3.5 text-white" />
-              </span>
-            </div>
-          </div>
+        </div>
 
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-medium text-black transition hover:text-black/75">
               Log In
             </Link>
-            <Link href={dashboardHref} className="rounded-lg border border-black px-4 py-2 text-sm font-bold text-black transition hover:bg-black hover:text-white">
+            <Link href={primaryWorkspaceHref} className="rounded-lg border border-black px-4 py-2 text-sm font-bold text-black transition hover:bg-black hover:text-white">
               {isAuthenticated ? "Open Dashboard" : "Join for Free"}
             </Link>
           </div>
@@ -539,7 +489,7 @@ export function HomeExperience() {
               <Link href="/catalog" className="rounded-lg bg-white px-6 py-3 text-sm font-bold text-[#1a1c30] transition hover:-translate-y-0.5">
                 Explore catalog
               </Link>
-              <Link href="/teacher/live-classes" className="rounded-lg border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10">
+              <Link href={liveWorkspaceHref} className="rounded-lg border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10">
                 Open live classes
               </Link>
               <button type="button" onClick={resetDemo} className="rounded-lg border border-white/25 px-6 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10">
@@ -683,65 +633,14 @@ export function HomeExperience() {
                 })}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-card py-12">
-        <div className={pageFrame}>
-          <div className="text-center">
-            <h2 className="text-[clamp(2rem,3vw,2.9rem)] font-bold tracking-[-0.05em]">Search learning programs</h2>
-          </div>
-          <div className="mx-auto mt-8 flex max-w-5xl items-center gap-3 rounded-xl border border-[#b9852b]/35 bg-[#191b2d] px-5 py-4 text-white shadow-soft">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              value={courseSearch}
-              onChange={(event) => setCourseSearch(event.target.value)}
-              placeholder="e.g. AI Assessment, Compliance Reporting, Leadership"
-              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/60"
-            />
-            <span className="ml-auto grid h-9 w-9 place-items-center rounded-lg bg-[#b9852b] text-white">
-              <Search className="h-4 w-4" />
-            </span>
-          </div>
-
-          {courseSearch.trim().length > 0 && (
-            <div className="mx-auto mt-4 max-w-5xl rounded-xl border border-[#b9852b]/25 bg-[#171929] p-3 shadow-soft">
-              {searchBusy ? (
-                <p className="px-2 py-2 text-sm text-white/70">Searching courses from database...</p>
-              ) : searchError ? (
-                <p className="px-2 py-2 text-sm text-red-300">{searchError}</p>
-              ) : searchResults.length === 0 ? (
-                <p className="px-2 py-2 text-sm text-white/70">No course found for &quot;{courseSearch}&quot;.</p>
-              ) : (
-                <div className="grid gap-2">
-                  {searchResults.map((course) => {
-                    const slug = Object.entries(catalogSlugMap).find(([, value]) => value === course.id)?.[0] ?? course.id;
-
-                    return (
-                      <Link
-                        key={course.id}
-                        href={`/catalog/${slug}`}
-                        className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 transition hover:border-[#ddb364]/55 hover:bg-white/10"
-                      >
-                        <p className="text-sm font-semibold text-white">{course.title}</p>
-                        <p className="mt-1 text-xs text-white/65">{course.category}</p>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Popular</span>
+              {categoryChips.map((chip) => (
+                <span key={chip} className="rounded-full border border-[#b9852b]/25 bg-[#201f2f] px-3 py-1 text-xs font-medium text-[#ddb364] dark:border-white/10 dark:bg-white/5 dark:text-white/80">
+                  {chip}
+                </span>
+              ))}
             </div>
-          )}
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Popular</span>
-            {categoryChips.map((chip) => (
-              <span key={chip} className="rounded-full border border-[#b9852b]/25 bg-[#201f2f] px-3 py-1 text-xs font-medium text-[#ddb364] dark:border-white/10 dark:bg-white/5 dark:text-white/80">
-                {chip}
-              </span>
-            ))}
           </div>
         </div>
       </section>
@@ -830,12 +729,12 @@ export function HomeExperience() {
                     ))}
                   </div>
                   <Link
-                    href="/admin/billing"
+                    href={pricingAction.href}
                     className={`mt-8 inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-bold transition ${
                       index === 1 ? "bg-[#b9852b] text-white" : "border border-[#b9852b] text-[#ddb364]"
                     }`}
                   >
-                    Open billing
+                    {pricingAction.label}
                   </Link>
                 </div>
               </div>
