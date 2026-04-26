@@ -438,12 +438,18 @@ class LmsSupport
     {
         $liveClass->loadMissing(['course:id,tenant_id', 'participants:id,live_class_id,student_id,joined_at,left_at', 'recordings:id,live_class_id,recording_url,duration_seconds,duration']);
         $scheduledAt = $liveClass->scheduled_at ?? $liveClass->start_at;
+        $endsAt = $liveClass->ends_at
+            ?? ($scheduledAt ? $scheduledAt->copy()->addMinutes((int) ($liveClass->duration_minutes ?? 0)) : null);
         $status = self::resolveLiveClassStatus($liveClass);
+        $meetingType = strtolower((string) ($liveClass->meeting_type ?? $liveClass->provider ?? 'jitsi'));
+        $meetingLink = $liveClass->meeting_link ?? $liveClass->meeting_url;
+        $canJoin = self::canJoinLiveClass($liveClass);
 
         return [
             'id' => $liveClass->id,
             'tenantId' => $liveClass->tenant_id ?? $liveClass->course?->tenant_id,
             'vendorId' => $liveClass->tenant_id ?? $liveClass->course?->tenant_id,
+            'batchName' => $liveClass->batch_name,
             'title' => $liveClass->title,
             'description' => $liveClass->description,
             'courseId' => $liveClass->course_id,
@@ -451,17 +457,26 @@ class LmsSupport
             'roomSlug' => $liveClass->room_slug,
             'scheduledAt' => optional($scheduledAt)->toIso8601String(),
             'startAt' => optional($scheduledAt)->toIso8601String(),
+            'endAt' => optional($endsAt)->toIso8601String(),
+            'date' => optional($scheduledAt)->toDateString(),
+            'startTime' => optional($scheduledAt)->format('H:i'),
+            'endTime' => optional($endsAt)->format('H:i'),
             'durationMinutes' => $liveClass->duration_minutes,
             'participantLimit' => $liveClass->participant_limit,
             'participantCount' => $liveClass->participants->count(),
-            'provider' => $liveClass->provider,
-            'meetingUrl' => $liveClass->meeting_url,
+            'meetingType' => $meetingType,
+            'provider' => ucfirst($meetingType),
+            'meetingUrl' => $meetingLink,
+            'meetingLink' => $meetingLink,
             'recordingUrl' => $liveClass->recording_url,
             'reminder24h' => $liveClass->reminder_24h,
             'reminder1h' => $liveClass->reminder_1h,
             'reminder24hSent' => $liveClass->reminder_24h_sent,
             'reminder1hSent' => $liveClass->reminder_1h_sent,
             'status' => $status,
+            'canJoin' => $canJoin,
+            'joinWindowStartsAt' => optional($scheduledAt?->copy()->subMinutes(15))->toIso8601String(),
+            'joinWindowEndsAt' => optional($endsAt?->copy()->addMinutes(15))->toIso8601String(),
             'participants' => $liveClass->participants->map(fn ($participant): array => [
                 'id' => $participant->id,
                 'studentId' => $participant->student_id,
@@ -478,8 +493,8 @@ class LmsSupport
 
     public static function resolveLiveClassStatus(LiveClass $liveClass): string
     {
-        if ($liveClass->status === 'recorded') {
-            return 'recorded';
+        if (in_array($liveClass->status, ['recorded', 'completed', 'cancelled'], true)) {
+            return $liveClass->status;
         }
 
         $scheduledAt = $liveClass->scheduled_at ?? $liveClass->start_at;
@@ -496,6 +511,21 @@ class LmsSupport
         }
 
         return $liveClass->status;
+    }
+
+    public static function canJoinLiveClass(LiveClass $liveClass): bool
+    {
+        $scheduledAt = $liveClass->scheduled_at ?? $liveClass->start_at;
+
+        if ($scheduledAt === null) {
+            return false;
+        }
+
+        $endsAt = $liveClass->ends_at ?? $scheduledAt->copy()->addMinutes((int) ($liveClass->duration_minutes ?? 0));
+        $windowStart = $scheduledAt->copy()->subMinutes(15);
+        $windowEnd = $endsAt->copy()->addMinutes(15);
+
+        return now()->betweenIncluded($windowStart, $windowEnd) && ! in_array($liveClass->status, ['cancelled', 'recorded'], true);
     }
 
     public static function serializeCertificate(Certificate $certificate): array

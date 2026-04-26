@@ -23,7 +23,7 @@ export default function AdminLiveClassesPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await scheduleLiveClass({ title: form.title, courseId: form.courseId, startAt: form.startAt, durationMinutes: Number(form.durationMinutes) });
+      await scheduleLiveClass({ title: form.title, courseId: form.courseId, startAt: form.startAt, durationMinutes: Number(form.durationMinutes), meetingType: "jitsi" });
       setAlert({ type: "success", msg: `"${form.title}" scheduled.` });
       setShowCreate(false);
       setForm({ title: "", courseId: "", startAt: "", durationMinutes: "60" });
@@ -38,6 +38,14 @@ export default function AdminLiveClassesPage() {
     try {
       await setLiveClassStatus(id, status);
       setAlert({ type: "success", msg: `Status updated to ${status}.` });
+
+      if (status === "live") {
+        const liveClass = state.liveClasses.find((item) => item.id === id);
+
+        if (liveClass?.meetingUrl) {
+          window.open(liveClass.meetingUrl, "_blank", "noopener,noreferrer");
+        }
+      }
     } catch (err) {
       setAlert({ type: "error", msg: err instanceof Error ? err.message : "Failed to update status." });
     }
@@ -115,7 +123,7 @@ export default function AdminLiveClassesPage() {
                           )}
                           {lc.meetingUrl && (
                             <a href={lc.meetingUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost py-1 px-2.5 text-xs">
-                              Join
+                              {lc.meetingType === "external" ? "Open Link" : "Join Jitsi"}
                             </a>
                           )}
                         </div>

@@ -473,41 +473,41 @@ export function HomeExperience() {
                 <span className="font-serif text-lg font-semibold">{state.branding.logoText || "SL"}</span>
               </div>
               <div>
-                <p className="font-sans text-[2rem] font-extrabold leading-none tracking-[-0.04em] text-[#f6f0e8]">
+                <p className="font-sans text-[2rem] font-black leading-none tracking-[-0.05em] text-black">
                   {state.branding.tenantName}
                 </p>
-                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/90">
                   Smart LMS
                 </p>
               </div>
             </Link>
             <div className="hidden items-center gap-5 lg:flex">
-              <a href="#courses" className="text-sm font-medium text-muted-foreground transition hover:text-foreground">Explore</a>
-              <a href="#pricing" className="text-sm font-medium text-muted-foreground transition hover:text-foreground">Degrees</a>
+              <a href="#courses" className="text-sm font-medium text-black transition hover:text-black/75">Explore</a>
+              <a href="#pricing" className="text-sm font-medium text-black transition hover:text-black/75">Degrees</a>
             </div>
           </div>
 
           <div className="hidden min-w-[360px] flex-1 items-center justify-center xl:flex">
-            <div className="flex w-full max-w-[640px] items-center gap-3 rounded-full border border-foreground/10 bg-background px-5 py-3 shadow-soft">
-              <Search className="h-4 w-4 text-muted-foreground" />
+            <div className="flex w-full max-w-[640px] items-center gap-3 rounded-full border border-black/10 bg-white px-5 py-3 shadow-soft">
+              <Search className="h-4 w-4 text-black/70" />
               <input
                 type="search"
                 value={courseSearch}
                 onChange={(event) => setCourseSearch(event.target.value)}
                 placeholder="What do you want to learn?"
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent text-sm text-black outline-none placeholder:text-black/50"
               />
               <span className="ml-auto grid h-8 w-8 place-items-center rounded-full bg-[#b9852b] text-white">
-                <Search className="h-3.5 w-3.5" />
+                <Search className="h-3.5 w-3.5 text-white" />
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-[#c8922d] transition hover:text-[#e0b15c]">
+            <Link href="/login" className="text-sm font-medium text-black transition hover:text-black/75">
               Log In
             </Link>
-            <Link href={dashboardHref} className="rounded-lg border border-[#b9852b] px-4 py-2 text-sm font-bold text-[#c8922d] transition hover:bg-[#b9852b] hover:text-white">
+            <Link href={dashboardHref} className="rounded-lg border border-black px-4 py-2 text-sm font-bold text-black transition hover:bg-black hover:text-white">
               {isAuthenticated ? "Open Dashboard" : "Join for Free"}
             </Link>
           </div>
@@ -713,7 +713,7 @@ export function HomeExperience() {
               ) : searchError ? (
                 <p className="px-2 py-2 text-sm text-red-300">{searchError}</p>
               ) : searchResults.length === 0 ? (
-                <p className="px-2 py-2 text-sm text-white/70">No course found for "{courseSearch}".</p>
+                <p className="px-2 py-2 text-sm text-white/70">No course found for &quot;{courseSearch}&quot;.</p>
               ) : (
                 <div className="grid gap-2">
                   {searchResults.map((course) => {

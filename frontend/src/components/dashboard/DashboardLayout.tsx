@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
+  Home,
   BookOpen,
   Users,
   GraduationCap,
@@ -342,6 +343,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         {/* Navigation */}
         <nav className="dash-sidebar-nav">
+          <div className="dash-nav-section">
+            <p className="dash-nav-section-label">General</p>
+            <Link href="/" className="dash-nav-item">
+              <span className="shrink-0"><Home className="w-4 h-4" /></span>
+              <span className="truncate">Home</span>
+            </Link>
+          </div>
+
           {navSections.map((section) => (
             <div key={section.label} className="dash-nav-section">
               <p className="dash-nav-section-label">{section.label}</p>
@@ -390,6 +399,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <Home className="w-4 h-4" />
+              <span>Home</span>
+            </Link>
+
             {/* Notifications */}
             <div className="relative">
               <button

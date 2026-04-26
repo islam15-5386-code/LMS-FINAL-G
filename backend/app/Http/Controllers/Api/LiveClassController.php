@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class LiveClassController extends Controller
@@ -38,36 +39,52 @@ class LiveClassController extends Controller
 
         $validated = $request->validate([
             'course_id' => ['required', 'exists:courses,id'],
+            'batch_name' => ['nullable', 'string', 'max:255'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'scheduled_at' => ['required', 'date', 'after:now'],
+            'date' => ['required', 'date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i'],
             'duration_minutes' => ['required', 'integer', 'min:15', 'max:300'],
-            'provider' => ['nullable', 'in:jitsi,agora'],
+            'meeting_type' => ['nullable', 'in:jitsi'],
+            'meeting_link' => ['nullable', 'string', 'max:2048'],
+            'status' => ['nullable', 'in:scheduled,live,completed,cancelled'],
         ]);
 
         $course = Course::query()->findOrFail($validated['course_id']);
         abort_if($course->tenant_id !== $user->tenant_id, 404, 'Course not found.');
 
+        $startAt = Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['start_time'], config('app.timezone'));
+        $endAt = Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['end_time'], config('app.timezone'));
+
+        abort_if($endAt->lessThanOrEqualTo($startAt), 422, 'End time must be after start time.');
+
+        $meetingType = 'jitsi';
         $roomSlug = Str::slug($validated['title']) . '-' . Str::lower(Str::random(8));
-        $provider = strtolower($validated['provider'] ?? 'jitsi');
+        $meetingLink = 'https://meet.jit.si/' . $roomSlug;
 
         $liveClass = LiveClass::query()->create([
             'tenant_id' => $user->tenant_id,
             'course_id' => $course->id,
             'teacher_id' => $user->role === 'teacher' ? $user->id : ($course->teacher_id ?? $user->id),
+            'batch_name' => $validated['batch_name'] ?? null,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
-            'provider' => $provider,
+            'meeting_type' => $meetingType,
+            'meeting_link' => $meetingLink,
+            'provider' => 'Jitsi',
             'room_slug' => $roomSlug,
-            'meeting_url' => $this->meetingUrlForProvider($provider, $roomSlug),
-            'scheduled_at' => $validated['scheduled_at'],
+            'meeting_url' => $meetingLink,
+            'scheduled_at' => $startAt,
+            'start_at' => $startAt,
+            'ends_at' => $endAt,
             'duration_minutes' => $validated['duration_minutes'],
             'participant_limit' => max(1, $course->enrollments()->count()),
             'reminder_24h' => true,
             'reminder_1h' => true,
             'reminder_24h_sent' => false,
             'reminder_1h_sent' => false,
-            'status' => 'scheduled',
+            'status' => $validated['status'] ?? 'scheduled',
         ]);
 
         $liveClass->load(['participants', 'recordings']);
@@ -325,11 +342,4 @@ class LiveClassController extends Controller
         }
     }
 
-    private function meetingUrlForProvider(string $provider, string $roomSlug): string
-    {
-        return match ($provider) {
-            'agora' => 'https://app.agora.io/call/' . $roomSlug,
-            default => 'https://meet.jit.si/' . $roomSlug,
-        };
-    }
 }

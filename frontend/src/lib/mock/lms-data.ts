@@ -109,17 +109,32 @@ export type LiveClass = {
   id: string;
   tenantId?: string;
   vendorId?: string;
+  batchName?: string;
   title: string;
+  description?: string;
   courseId: string;
+  teacherId?: string;
+  roomSlug?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
   startAt: string;
+  endAt?: string;
   durationMinutes: number;
   participantLimit: number;
-  provider: "Jitsi";
+  provider: "Jitsi" | "External";
+  meetingType?: "jitsi" | "external";
   meetingUrl?: string;
+  meetingLink?: string;
   recordingUrl?: string | null;
   reminder24h: boolean;
   reminder1h: boolean;
-  status: "scheduled" | "live" | "recorded";
+  reminder24hSent?: boolean;
+  reminder1hSent?: boolean;
+  canJoin?: boolean;
+  joinWindowStartsAt?: string;
+  joinWindowEndsAt?: string;
+  status: "scheduled" | "live" | "recorded" | "completed" | "cancelled";
 };
 
 export type Certificate = {

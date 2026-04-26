@@ -328,6 +328,22 @@ export function StudentLiveClassesPanel() {
   const [showAllLiveClasses, setShowAllLiveClasses] = useState(false);
   const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
 
+  function canJoinNow(liveClass: (typeof state.liveClasses)[number]) {
+    if (liveClass.status === "cancelled" || liveClass.status === "recorded") {
+      return false;
+    }
+
+    if (liveClass.canJoin !== undefined) {
+      return liveClass.canJoin;
+    }
+
+    const startAt = new Date(liveClass.startAt).getTime();
+    const endAt = liveClass.endAt ? new Date(liveClass.endAt).getTime() : startAt + liveClass.durationMinutes * 60 * 1000;
+    const now = Date.now();
+
+    return now >= startAt - 15 * 60 * 1000 && now <= endAt + 15 * 60 * 1000;
+  }
+
   return (
     <Section title="My live classes" subtitle="View upcoming sessions, schedule details, and session status without teacher scheduling controls.">
       <div className="grid gap-4">
@@ -337,8 +353,10 @@ export function StudentLiveClassesPanel() {
               <div>
                 <p className="font-serif text-2xl">{liveClass.title}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {new Date(liveClass.startAt).toLocaleString()} · {liveClass.durationMinutes} min · {liveClass.provider}
+                  {new Date(liveClass.startAt).toLocaleString()} - {liveClass.endAt ? new Date(liveClass.endAt).toLocaleTimeString() : ""} · {liveClass.provider}
                 </p>
+                {liveClass.description ? <p className="mt-2 text-sm text-muted-foreground">{liveClass.description}</p> : null}
+                {liveClass.batchName ? <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{liveClass.batchName}</p> : null}
               </div>
               <Badge>{liveClass.status}</Badge>
             </div>
@@ -358,8 +376,11 @@ export function StudentLiveClassesPanel() {
             </div>
             {liveClass.meetingUrl ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                <PrimaryButton onClick={() => window.open(liveClass.meetingUrl, "_blank", "noopener,noreferrer")}>
-                  {liveClass.status === "live" ? "Join live class" : "Open live room"}
+                <PrimaryButton
+                  disabled={!canJoinNow(liveClass)}
+                  onClick={() => window.open(liveClass.meetingUrl, "_blank", "noopener,noreferrer")}
+                >
+                  {liveClass.status === "live" || canJoinNow(liveClass) ? "Join Live Class" : "Join disabled"}
                 </PrimaryButton>
                 {liveClass.recordingUrl ? (
                   <SecondaryButton onClick={() => window.open(liveClass.recordingUrl ?? undefined, "_blank", "noopener,noreferrer")}>

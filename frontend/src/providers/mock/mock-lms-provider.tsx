@@ -68,8 +68,16 @@ type CreateAssessmentPayload = {
 type ScheduleLiveClassPayload = {
   title: string;
   courseId: string;
-  startAt: string;
+  batchName?: string;
+  description?: string;
+  startAt?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  meetingType?: "jitsi";
+  meetingLink?: string;
   durationMinutes: number;
+  status?: "scheduled" | "live" | "completed" | "cancelled";
 };
 
 type MockLmsContextType = {
@@ -147,9 +155,26 @@ function buildLocalMeetingUrl(title: string) {
   return `https://meet.jit.si/SmartLMS-${roomName || "Live-Class"}`;
 }
 
+function normalizeSchedulePayload(payload: ScheduleLiveClassPayload) {
+  const date = payload.date ?? payload.startAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const startTime = payload.startTime ?? payload.startAt?.slice(11, 16) ?? new Date().toISOString().slice(11, 16);
+  const startAt = payload.startAt ?? `${date}T${startTime}`;
+  const startAtMs = Date.parse(startAt);
+  const endTime = payload.endTime ?? (Number.isNaN(startAtMs) ? startTime : new Date(startAtMs + payload.durationMinutes * 60 * 1000).toISOString().slice(11, 16));
+
+  return {
+    ...payload,
+    startAt,
+    date,
+    startTime,
+    endTime,
+    meetingType: "jitsi" as const
+  };
+}
+
 function resolveAutoLiveStatus(liveClass: MockLmsState["liveClasses"][number], nowMs: number) {
-  if (liveClass.status === "recorded") {
-    return "recorded" as const;
+  if (liveClass.status === "recorded" || liveClass.status === "completed" || liveClass.status === "cancelled") {
+    return liveClass.status;
   }
 
   const startMs = Date.parse(liveClass.startAt);
@@ -670,8 +695,10 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
       });
     },
     async scheduleLiveClass(payload) {
+      const normalizedPayload = normalizeSchedulePayload(payload);
+
       if (currentUser) {
-        await createLiveClassOnBackend(payload);
+        await createLiveClassOnBackend(normalizedPayload);
         await refreshBackendState();
         return;
       }
@@ -683,13 +710,16 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
             id: uid("live"),
             tenantId: current.branding.tenantId,
             vendorId: current.branding.vendorId,
-            title: payload.title,
-            courseId: payload.courseId,
-            startAt: payload.startAt,
-            durationMinutes: payload.durationMinutes,
+            title: normalizedPayload.title,
+            courseId: normalizedPayload.courseId,
+            startAt: normalizedPayload.startAt,
+            date: normalizedPayload.date,
+            startTime: normalizedPayload.startTime,
+            endTime: normalizedPayload.endTime,
+            durationMinutes: normalizedPayload.durationMinutes,
             participantLimit: planMatrix[current.billing.plan].liveLimit || 100,
             provider: "Jitsi",
-            meetingUrl: buildLocalMeetingUrl(payload.title),
+            meetingUrl: buildLocalMeetingUrl(normalizedPayload.title),
             recordingUrl: null,
             reminder24h: true,
             reminder1h: true,
@@ -704,7 +734,7 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
             vendorId: current.branding.vendorId,
             audience: "All",
             type: "live-class",
-            message: `${payload.title} was scheduled with automated 24h and 1h reminders.`,
+            message: `${normalizedPayload.title} was scheduled with automated 24h and 1h reminders.`,
             createdAt: new Date().toISOString()
           },
           ...current.notifications

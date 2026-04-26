@@ -724,12 +724,28 @@ export function AssessmentLab({ reviewMode = false }: { reviewMode?: boolean }) 
 export function LiveClassesPanel() {
   const { state, scheduleLiveClass, setLiveClassStatus } = useMockLms();
   const [showAllLiveClasses, setShowAllLiveClasses] = useState(false);
+  type LiveClassFormState = {
+    title: string;
+    courseId: string;
+    batchName: string;
+    description: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    meetingType: "jitsi";
+    durationMinutes: number;
+  };
   const [form, setForm] = useState({
     title: "New live session",
     courseId: state.courses[0]?.id ?? "",
-    startAt: new Date().toISOString().slice(0, 16),
+    batchName: "",
+    description: "",
+    date: new Date().toISOString().slice(0, 10),
+    startTime: new Date().toISOString().slice(11, 16),
+    endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(11, 16),
+    meetingType: "jitsi" as const,
     durationMinutes: 60
-  });
+  } satisfies LiveClassFormState);
   const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
 
   async function handleGoLive(classId: string, meetingUrl?: string | null) {
@@ -745,6 +761,7 @@ export function LiveClassesPanel() {
       <Section title="Schedule live classroom" subtitle="Jitsi-backed sessions with 24-hour and 1-hour reminders are ready to be created in the frontend workflow.">
         <div className="grid gap-3">
           <TextInput value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+          <TextInput value={form.batchName} onChange={(event) => setForm({ ...form, batchName: event.target.value })} placeholder="Batch / Class" />
           <SelectInput value={form.courseId} onChange={(event) => setForm({ ...form, courseId: event.target.value })}>
             {state.courses.map((course) => (
               <option key={course.id} value={course.id}>
@@ -752,9 +769,22 @@ export function LiveClassesPanel() {
               </option>
             ))}
           </SelectInput>
-          <TextInput type="datetime-local" value={form.startAt} onChange={(event) => setForm({ ...form, startAt: event.target.value })} />
+          <TextArea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Description" className="min-h-[88px]" />
+          <div className="grid gap-3 md:grid-cols-3">
+            <TextInput type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
+            <TextInput type="time" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
+            <TextInput type="time" value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} />
+          </div>
+          <SelectInput value={form.meetingType} onChange={(event) => setForm({ ...form, meetingType: event.target.value as "jitsi" })}>
+            <option value="jitsi">Jitsi</option>
+          </SelectInput>
           <TextInput type="number" value={form.durationMinutes} onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })} />
-          <PrimaryButton onClick={() => scheduleLiveClass({ ...form, startAt: new Date(form.startAt).toISOString() })}>
+          <PrimaryButton
+            onClick={() => scheduleLiveClass({
+              ...form,
+              meetingType: "jitsi"
+            })}
+          >
             Schedule live class
           </PrimaryButton>
         </div>
@@ -768,8 +798,9 @@ export function LiveClassesPanel() {
                 <div>
                   <p className="font-serif text-2xl">{liveClass.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(liveClass.startAt).toLocaleString()} · {liveClass.durationMinutes} min · {liveClass.provider}
+                    {new Date(liveClass.startAt).toLocaleString()} - {liveClass.endAt ? new Date(liveClass.endAt).toLocaleTimeString() : `${liveClass.durationMinutes} min`} · {liveClass.provider}
                   </p>
+                  {liveClass.meetingType ? <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{liveClass.meetingType}</p> : null}
                 </div>
                 <Badge>{liveClass.status}</Badge>
               </div>

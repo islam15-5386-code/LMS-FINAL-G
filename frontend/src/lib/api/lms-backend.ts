@@ -157,21 +157,38 @@ function normalizeLiveClass(liveClass: Record<string, unknown>): LiveClass {
       : String(liveClass.status ?? "scheduled") === "recorded"
         ? "recorded"
         : "scheduled";
+  const meetingType = String(liveClass.meetingType ?? "jitsi") === "external" ? "external" : "jitsi";
+  const meetingUrl = liveClass.meetingUrl ? String(liveClass.meetingUrl) : liveClass.meetingLink ? String(liveClass.meetingLink) : undefined;
 
   return {
     id: String(liveClass.id),
     tenantId: liveClass.tenantId ? String(liveClass.tenantId) : undefined,
     vendorId: liveClass.vendorId ? String(liveClass.vendorId) : undefined,
+    batchName: liveClass.batchName ? String(liveClass.batchName) : undefined,
     title: String(liveClass.title ?? ""),
+    description: liveClass.description ? String(liveClass.description) : undefined,
     courseId: String(liveClass.courseId ?? ""),
+    teacherId: liveClass.teacherId ? String(liveClass.teacherId) : undefined,
+    roomSlug: liveClass.roomSlug ? String(liveClass.roomSlug) : undefined,
+    date: liveClass.date ? String(liveClass.date) : undefined,
+    startTime: liveClass.startTime ? String(liveClass.startTime) : undefined,
+    endTime: liveClass.endTime ? String(liveClass.endTime) : undefined,
     startAt,
+    endAt: liveClass.endAt ? String(liveClass.endAt) : undefined,
     durationMinutes: Number(liveClass.durationMinutes ?? 0),
     participantLimit: Number(liveClass.participantLimit ?? 0),
-    provider: "Jitsi" as const,
-    meetingUrl: liveClass.meetingUrl ? String(liveClass.meetingUrl) : undefined,
+    provider: meetingType === "external" ? "External" : "Jitsi",
+    meetingType,
+    meetingUrl,
+    meetingLink: liveClass.meetingLink ? String(liveClass.meetingLink) : meetingUrl,
     recordingUrl: liveClass.recordingUrl ? String(liveClass.recordingUrl) : null,
     reminder24h: Boolean(liveClass.reminder24h),
     reminder1h: Boolean(liveClass.reminder1h),
+    reminder24hSent: Boolean(liveClass.reminder24hSent),
+    reminder1hSent: Boolean(liveClass.reminder1hSent),
+    canJoin: Boolean(liveClass.canJoin),
+    joinWindowStartsAt: liveClass.joinWindowStartsAt ? String(liveClass.joinWindowStartsAt) : undefined,
+    joinWindowEndsAt: liveClass.joinWindowEndsAt ? String(liveClass.joinWindowEndsAt) : undefined,
     status: normalizedStatus
   };
 }
@@ -656,16 +673,30 @@ export async function completeLessonOnBackend(courseId: string, lessonId: string
 export async function createLiveClassOnBackend(payload: {
   title: string;
   courseId: string;
-  startAt: string;
+  batchName?: string;
+  description?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  meetingType?: "jitsi";
+  meetingLink?: string;
   durationMinutes: number;
+  status?: "scheduled" | "live" | "completed" | "cancelled";
 }) {
   const response = await apiFetch("/api/v1/live-classes", {
     method: "POST",
     body: JSON.stringify({
       title: payload.title,
       course_id: Number(payload.courseId),
-      scheduled_at: payload.startAt,
+      batch_name: payload.batchName ?? null,
+      description: payload.description ?? null,
+      date: payload.date,
+      start_time: payload.startTime,
+      end_time: payload.endTime,
+      meeting_type: payload.meetingType ?? "jitsi",
+      meeting_link: payload.meetingLink ?? null,
       duration_minutes: payload.durationMinutes
+      ,status: payload.status ?? "scheduled"
     })
   });
 
