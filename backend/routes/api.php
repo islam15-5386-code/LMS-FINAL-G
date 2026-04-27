@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\DirectoryController;
+use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\EnrollmentController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LiveClassController;
@@ -78,6 +79,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/reports/compliance/export/pdf', [ComplianceController::class, 'exportPdf']);
         Route::post('/reports/compliance/reminders', [ComplianceController::class, 'sendReminders']);
 
+        Route::post('/emails/send', [EmailController::class, 'send']);
+
         Route::get('/certificates', [CertificateController::class, 'index']);
         Route::post('/certificates', [CertificateController::class, 'store']);
         Route::post('/certificates/{certificate}/revoke', [CertificateController::class, 'revoke']);
@@ -92,8 +95,4 @@ Route::prefix('v1')->group(function (): void {
     });
 });
 
-Route::middleware('auth:sanctum')->group(function (): void {
-    Route::post('/teacher/notes/upload', [AssessmentController::class, 'uploadNotes']);
-    Route::get('/teacher/question-bank/fallback', [AssessmentController::class, 'fallbackBanks']);
-    Route::post('/teacher/assessments/generate', [AssessmentController::class, 'generate']);
-});
+

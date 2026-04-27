@@ -12,7 +12,15 @@ export default function AdminLiveClassesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [form, setForm] = useState({ title: "", courseId: "", startAt: "", durationMinutes: "60" });
+  const [form, setForm] = useState({ 
+    title: "", 
+    courseId: "", 
+    startAt: "", 
+    durationMinutes: "60",
+    meetingType: "jitsi" as "jitsi" | "external",
+    meetingLink: "",
+    hostEmail: "tanvirulislam5386@gmail.com"
+  });
 
   const publishedCourses = state.courses.filter((c) => c.status === "published");
   const scheduled = state.liveClasses.filter((lc) => lc.status === "scheduled").length;
@@ -23,10 +31,17 @@ export default function AdminLiveClassesPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await scheduleLiveClass({ title: form.title, courseId: form.courseId, startAt: form.startAt, durationMinutes: Number(form.durationMinutes), meetingType: "jitsi" });
+      await scheduleLiveClass({ 
+        title: form.title, 
+        courseId: form.courseId, 
+        startAt: form.startAt, 
+        durationMinutes: Number(form.durationMinutes), 
+        meetingType: form.meetingType,
+        meetingLink: form.meetingType === "external" ? form.meetingLink : undefined
+      });
       setAlert({ type: "success", msg: `"${form.title}" scheduled.` });
       setShowCreate(false);
-      setForm({ title: "", courseId: "", startAt: "", durationMinutes: "60" });
+      setForm({ title: "", courseId: "", startAt: "", durationMinutes: "60", meetingType: "jitsi", meetingLink: "", hostEmail: "tanvirulislam5386@gmail.com" });
     } catch (err) {
       setAlert({ type: "error", msg: err instanceof Error ? err.message : "Failed to schedule." });
     } finally {
@@ -162,6 +177,23 @@ export default function AdminLiveClassesPage() {
                 <label className="form-label">Duration (minutes)</label>
                 <input type="number" className="form-input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} min={15} max={300} />
               </div>
+              <div>
+                <label className="form-label">Meeting Type</label>
+                <select className="form-input" value={form.meetingType} onChange={(e) => setForm({ ...form, meetingType: e.target.value as "jitsi" | "external" })}>
+                  <option value="jitsi">Jitsi</option>
+                  <option value="external">External Link (Google Meet, etc.)</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Host Email</label>
+                <input type="email" className="form-input" value={form.hostEmail} onChange={(e) => setForm({ ...form, hostEmail: e.target.value })} placeholder="Host Email (for Google Meet)" />
+              </div>
+              {form.meetingType === "external" && (
+                <div>
+                  <label className="form-label">Meeting Link</label>
+                  <input type="url" className="form-input" value={form.meetingLink} onChange={(e) => setForm({ ...form, meetingLink: e.target.value })} placeholder="https://meet.google.com/..." required />
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={creating} className="btn-accent flex-1">{creating ? "Scheduling…" : "Schedule"}</button>
                 <button type="button" onClick={() => setShowCreate(false)} className="btn-secondary flex-1">Cancel</button>

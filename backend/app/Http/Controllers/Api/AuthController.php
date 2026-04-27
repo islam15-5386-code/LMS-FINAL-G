@@ -11,6 +11,7 @@ use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
@@ -64,6 +65,17 @@ class AuthController extends Controller
         );
 
         $token = $user->createToken('api-token')->plainTextToken;
+
+        try {
+            Mail::raw(
+                "Welcome to {$tenant->name}, {$user->name}!\n\nYour account has been created successfully.\n\nRole: {$user->role}\nEmail: {$user->email}\n\nYou can now log in at {$tenant->custom_domain}.",
+                function ($message) use ($user, $tenant) {
+                    $message->to($user->email)->subject("Welcome to {$tenant->name}");
+                }
+            );
+        } catch (\Throwable $e) {
+            // Ignore email failure
+        }
 
         return response()->json([
             'message' => 'Registration completed successfully.',

@@ -111,6 +111,16 @@ class LmsSupport
                 ->values()
                 ->all();
 
+            $genericDistractors = [
+                'It is generally considered outside the scope of this topic.',
+                'It only applies in legacy systems.',
+                'It is a concept not mentioned in the notes.'
+            ];
+            
+            while (count($distractors) < 3) {
+                $distractors[] = array_pop($genericDistractors);
+            }
+
             $options = collect([$correctOption, ...$distractors])
                 ->take(4)
                 ->shuffle()
@@ -369,7 +379,7 @@ class LmsSupport
             'status' => $course->status,
             'price' => (float) ($course->price_bdt ?? $course->price),
             'priceBdt' => (int) ($course->price_bdt ?? $course->price),
-            'enrollmentCount' => $course->enrollment_count,
+            'enrollmentCount' => $course->enrollments_count ?? $course->enrollment_count,
             'modules' => $course->modules
                 ->sortBy('position')
                 ->values()

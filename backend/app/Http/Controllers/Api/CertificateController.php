@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class CertificateController extends Controller
 {
@@ -68,6 +69,19 @@ class CertificateController extends Controller
 
         LmsSupport::audit($user, 'Issued certificate', $course->title, $request->ip());
         LmsSupport::notify($user->tenant, 'Student', 'system', sprintf('Certificate issued for "%s".', $course->title));
+
+        try {
+            if ($student->email) {
+                Mail::raw(
+                    "Congratulations {$student->name}!\n\nYou have been issued a certificate for completing '{$course->title}'.\n\nVerification Code: {$certificate->verification_code}",
+                    function ($message) use ($student, $course) {
+                        $message->to($student->email)->subject("Certificate Issued: {$course->title}");
+                    }
+                );
+            }
+        } catch (\Throwable $e) {
+            // Ignore email failure
+        }
 
         return response()->json([
             'message' => 'Certificate issued successfully.',

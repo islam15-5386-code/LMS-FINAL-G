@@ -4,8 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
-import { useMockLms } from "@/providers/mock-lms-provider";
-import { dashboardPathForRole } from "@/providers/mock-lms-provider";
+import { useLms, dashboardPathForRole } from "@/providers/lms-provider";
 
 // Quick-access demo credentials
 const DEMO_ACCOUNTS = [
@@ -16,7 +15,7 @@ const DEMO_ACCOUNTS = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useMockLms();
+  const { signIn } = useLms();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);

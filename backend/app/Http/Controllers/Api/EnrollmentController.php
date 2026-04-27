@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class EnrollmentController extends Controller
 {
@@ -80,6 +81,19 @@ class EnrollmentController extends Controller
 
         LmsSupport::audit($user, 'Created enrollment', $course->title . ' / ' . $student->name, $request->ip());
         LmsSupport::notify($user->tenant, 'Student', 'system', sprintf('You have been enrolled in "%s".', $course->title));
+
+        try {
+            if ($student->email) {
+                Mail::raw(
+                    "Hello {$student->name},\n\nYou have been enrolled in the course '{$course->title}'.\n\nYou can now start your learning journey.",
+                    function ($message) use ($student, $course) {
+                        $message->to($student->email)->subject("Enrolled in {$course->title}");
+                    }
+                );
+            }
+        } catch (\Throwable $e) {
+            // Ignore email failure
+        }
 
         return response()->json([
             'message' => 'Enrollment created successfully.',

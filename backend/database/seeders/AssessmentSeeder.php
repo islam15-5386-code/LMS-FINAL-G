@@ -32,7 +32,7 @@ class AssessmentSeeder extends Seeder
                 }
 
                 $assessmentTypes = ['MCQ', 'True/False', 'Short Answer', 'Essay'];
-                $assessmentCount = $course->status === 'published' ? 2 : 1;
+                $assessmentCount = 10;
 
                 for ($assessmentIndex = 0; $assessmentIndex < $assessmentCount; $assessmentIndex++) {
                     $type = $assessmentTypes[($courseIndex + $assessmentIndex) % count($assessmentTypes)];

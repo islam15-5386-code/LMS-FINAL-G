@@ -20,6 +20,7 @@ class CourseController extends Controller
     {
         $courses = Course::query()
             ->where('status', 'published')
+            ->withCount('enrollments')
             ->when(
                 $request->filled('search'),
                 fn ($query) => $query->where(function ($inner) use ($request): void {
@@ -51,6 +52,7 @@ class CourseController extends Controller
 
         $courses = Course::query()
             ->where('tenant_id', $user->tenant_id)
+            ->withCount('enrollments')
             ->when(
                 $request->filled('search'),
                 fn ($query) => $query->where(function ($inner) use ($request): void {

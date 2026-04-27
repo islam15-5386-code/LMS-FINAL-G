@@ -50,11 +50,11 @@ class UserSeeder extends Seeder
         Tenant::query()->orderBy('id')->each(function (Tenant $tenant) use ($roleIds, &$nameIndex): void {
             $this->createUserForTenant($tenant, 'admin', 'admin', 'Administration', $nameIndex++);
 
-            for ($teacherIndex = 0; $teacherIndex < 4; $teacherIndex++) {
+            for ($teacherIndex = 0; $teacherIndex < 10; $teacherIndex++) {
                 $this->createUserForTenant($tenant, 'teacher', 'teacher', 'Faculty', $nameIndex++);
             }
 
-            for ($studentIndex = 0; $studentIndex < 28; $studentIndex++) {
+            for ($studentIndex = 0; $studentIndex < 10; $studentIndex++) {
                 $departments = ['CSE', 'BBA', 'English', 'Textile', 'Marketing', 'Accounts', 'HR', 'Operations'];
                 $this->createUserForTenant(
                     $tenant,

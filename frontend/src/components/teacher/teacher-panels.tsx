@@ -732,7 +732,9 @@ export function LiveClassesPanel() {
     date: string;
     startTime: string;
     endTime: string;
-    meetingType: "jitsi";
+    meetingType: "jitsi" | "external";
+    meetingLink?: string;
+    hostEmail?: string;
     durationMinutes: number;
   };
   const [form, setForm] = useState({
@@ -744,6 +746,8 @@ export function LiveClassesPanel() {
     startTime: new Date().toISOString().slice(11, 16),
     endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(11, 16),
     meetingType: "jitsi" as const,
+    meetingLink: "",
+    hostEmail: "tanvirulislam5386@gmail.com",
     durationMinutes: 60
   } satisfies LiveClassFormState);
   const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
@@ -775,14 +779,20 @@ export function LiveClassesPanel() {
             <TextInput type="time" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
             <TextInput type="time" value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} />
           </div>
-          <SelectInput value={form.meetingType} onChange={(event) => setForm({ ...form, meetingType: event.target.value as "jitsi" })}>
+          <SelectInput value={form.meetingType} onChange={(event) => setForm({ ...form, meetingType: event.target.value as "jitsi" | "external" })}>
             <option value="jitsi">Jitsi</option>
+            <option value="external">External Link (Google Meet, etc.)</option>
           </SelectInput>
+          <TextInput type="email" value={form.hostEmail} onChange={(event) => setForm({ ...form, hostEmail: event.target.value })} placeholder="Host Email (for Google Meet)" />
+          {form.meetingType === "external" && (
+            <TextInput value={form.meetingLink} onChange={(event) => setForm({ ...form, meetingLink: event.target.value })} placeholder="Meeting Link (e.g. https://meet.google.com/...)" />
+          )}
           <TextInput type="number" value={form.durationMinutes} onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })} />
           <PrimaryButton
             onClick={() => scheduleLiveClass({
               ...form,
-              meetingType: "jitsi"
+              meetingType: form.meetingType,
+              meetingLink: form.meetingType === "external" ? form.meetingLink : undefined
             })}
           >
             Schedule live class

@@ -343,6 +343,108 @@ class BangladeshLmsDataset
                 ],
                 'keywords' => ['Excel', 'Ledger', 'Voucher', 'Pivot Table', 'Reconciliation'],
             ],
+            [
+                'title' => 'Time Management for Professionals',
+                'category' => 'Personal Development',
+                'level' => 'Beginner',
+                'price_bdt' => 4500,
+                'description' => 'Master productivity tools, prioritization techniques, and work-life balance for busy Bangladeshi professionals.',
+                'modules' => ['Productivity Tools', 'Prioritization Techniques', 'Sustaining Balance'],
+                'lessons' => [
+                    ['title' => 'Calendar and task management', 'type' => 'video'],
+                    ['title' => 'The Eisenhower Matrix explained', 'type' => 'pdf'],
+                    ['title' => 'Handling interruptions effectively', 'type' => 'video'],
+                    ['title' => 'Focus and deep work sessions', 'type' => 'quiz'],
+                    ['title' => 'Weekly review assignment', 'type' => 'assignment'],
+                    ['title' => 'Productivity Q&A session', 'type' => 'live_class'],
+                ],
+                'keywords' => ['Productivity', 'Focus', 'Prioritization', 'Work-life balance'],
+            ],
+            [
+                'title' => 'Photography Foundations',
+                'category' => 'Arts',
+                'level' => 'Beginner',
+                'price_bdt' => 12000,
+                'description' => 'Learn manual camera settings, composition, lighting, and basic editing for professional-looking photos.',
+                'modules' => ['Camera Basics', 'Composition and Light', 'Editing Workflow'],
+                'lessons' => [
+                    ['title' => 'Aperture, Shutter, and ISO', 'type' => 'video'],
+                    ['title' => 'Rule of Thirds and Framing', 'type' => 'pdf'],
+                    ['title' => 'Natural vs Artificial Lighting', 'type' => 'video'],
+                    ['title' => 'Composition quiz', 'type' => 'quiz'],
+                    ['title' => 'Outdoor shoot assignment', 'type' => 'assignment'],
+                    ['title' => 'Lightroom basics workshop', 'type' => 'live_class'],
+                ],
+                'keywords' => ['Photography', 'Lighting', 'Composition', 'Editing', 'Lightroom'],
+            ],
+            [
+                'title' => 'Public Speaking Masterclass',
+                'category' => 'Personal Development',
+                'level' => 'Intermediate',
+                'price_bdt' => 9500,
+                'description' => 'Overcome stage fright and deliver impactful presentations with structured storytelling and vocal training.',
+                'modules' => ['Overcoming Anxiety', 'Storytelling Techniques', 'Delivery Mastery'],
+                'lessons' => [
+                    ['title' => 'Breathing and posture basics', 'type' => 'video'],
+                    ['title' => 'Structuring your speech', 'type' => 'pdf'],
+                    ['title' => 'Engaging the audience', 'type' => 'video'],
+                    ['title' => 'Vocal variety exercise', 'type' => 'quiz'],
+                    ['title' => 'Presentation assignment', 'type' => 'assignment'],
+                    ['title' => 'Live speech feedback', 'type' => 'live_class'],
+                ],
+                'keywords' => ['Public Speaking', 'Confidence', 'Storytelling', 'Vocal Training'],
+            ],
+            [
+                'title' => 'Basics of Stock Market',
+                'category' => 'Finance',
+                'level' => 'Beginner',
+                'price_bdt' => 8500,
+                'description' => 'Understand the Bangladesh stock market, fundamental analysis, and long-term investment strategies.',
+                'modules' => ['Market Structure', 'Analysis Basics', 'Investment Strategy'],
+                'lessons' => [
+                    ['title' => 'How DSE and CSE work', 'type' => 'video'],
+                    ['title' => 'Reading financial statements', 'type' => 'pdf'],
+                    ['title' => 'Diversification and risk', 'type' => 'video'],
+                    ['title' => 'IPO and primary market', 'type' => 'quiz'],
+                    ['title' => 'Portfolio design assignment', 'type' => 'assignment'],
+                    ['title' => 'Market review class', 'type' => 'live_class'],
+                ],
+                'keywords' => ['Stock Market', 'Finance', 'Investment', 'DSE', 'Analysis'],
+            ],
+            [
+                'title' => 'First Aid and Safety',
+                'category' => 'Health',
+                'level' => 'Beginner',
+                'price_bdt' => 3500,
+                'description' => 'Basic life-saving skills, wound care, and emergency response for workplace and home safety.',
+                'modules' => ['Emergency Response', 'Injury Management', 'Safety Protocols'],
+                'lessons' => [
+                    ['title' => 'CPR and Choking basics', 'type' => 'video'],
+                    ['title' => 'Wound cleaning and dressing', 'type' => 'pdf'],
+                    ['title' => 'Burns and fracture response', 'type' => 'video'],
+                    ['title' => 'Emergency kits checklist', 'type' => 'quiz'],
+                    ['title' => 'First aid simulation', 'type' => 'assignment'],
+                    ['title' => 'Q&A with a paramedic', 'type' => 'live_class'],
+                ],
+                'keywords' => ['First Aid', 'Safety', 'Health', 'Emergency', 'CPR'],
+            ],
+            [
+                'title' => 'Culinary Arts: Bengali Cuisine',
+                'category' => 'Arts',
+                'level' => 'Intermediate',
+                'price_bdt' => 11000,
+                'description' => 'Master authentic Bengali recipes, spice blending, and professional plating for traditional favorites.',
+                'modules' => ['Spice Foundations', 'Main Course Mastery', 'Desserts and Plating'],
+                'lessons' => [
+                    ['title' => 'The art of Bengali spices', 'type' => 'video'],
+                    ['title' => 'Traditional Fish Curry', 'type' => 'pdf'],
+                    ['title' => 'Biryani and Pulao secrets', 'type' => 'video'],
+                    ['title' => 'Recipe modification quiz', 'type' => 'quiz'],
+                    ['title' => 'Dish creation assignment', 'type' => 'assignment'],
+                    ['title' => 'Plating live demo', 'type' => 'live_class'],
+                ],
+                'keywords' => ['Cooking', 'Cuisine', 'Bengali', 'Recipes', 'Plating'],
+            ],
         ];
     }
 
@@ -457,6 +559,85 @@ class BangladeshLmsDataset
             $buildingTitles[$index % count($buildingTitles)],
             $city
         );
+    }
+
+    /**
+     * A curated pool of real educational YouTube video IDs grouped by topic.
+     * These are popular, freely available tutorial videos.
+     */
+    public static function youtubeVideoPool(): array
+    {
+        return [
+            'html' => ['qz0aGYrrlhU', 'UB1O30fR-EE', 'HcOc7P5BMi4'],
+            'css' => ['1Rs2ND1ryYc', 'OXGznpKZ_sA', 'G3e-cpL7ofc'],
+            'javascript' => ['W6NZfCO5SIk', 'PkZNo7MFNFg', 'jS4aFq5-91M'],
+            'react' => ['SqcY0GlETPk', 'w7ejDZ8SWv8', 'bMknfKXIFA8'],
+            'nextjs' => ['ZVnjOPwW4ZA', 'mTz0GXj8NN0', 'wm5gMKuwSYk'],
+            'laravel' => ['MFh0Fd7BsjQ', 'MYyJ4PuL4pY', 'ImtZ5yENzgE'],
+            'flutter' => ['VPvVD8t02U8', '1ukSR1GRtMU', 'x0uinJvhNxI'],
+            'dart' => ['Ej_Pcr4uC2Q', 'F3JuuYuOUK4'],
+            'python' => ['_uQrJ0TkZlc', 'rfscVS0vtbw', 'kqtD5dpn9C8'],
+            'pandas' => ['vmEHCJofslg', 'PcvsOaixUh8'],
+            'data' => ['r-uOLxNrNk8', 'ua-CiDNNj30'],
+            'api' => ['GZvSYJDk-us', 'WXsD0ZgxjRw'],
+            'database' => ['HXV3zeQKqGY', 'ztHopE5Wnpc'],
+            'git' => ['RGOj5yH7evk', 'SWYqp7iY_Tc'],
+            'marketing' => ['bixR-KIJKYM', 'i_gNOt0CjdI'],
+            'seo' => ['DvwS7cV9GmQ', 'SnxRyUe8KFI'],
+            'facebook' => ['bixR-KIJKYM', 'I-FoJGUPOjg'],
+            'photoshop' => ['IyR_uYsRdPs', 'W-hWm6ZdEKQ'],
+            'illustrator' => ['Ib8UBwu3yGA', '3aYECRqh9YM'],
+            'design' => ['YqQx75OPRa0', 'HZuk6ICGrGE'],
+            'typography' => ['sByzHoiYFX0', 'agbh1wbfJt8'],
+            'english' => ['TETSs8Y6XjE', 'OnprREgvUiI'],
+            'ielts' => ['PSSBRNyw00k', 'TETSs8Y6XjE'],
+            'speaking' => ['HAnw168huqA', 'eIho2S0ZahI'],
+            'presentation' => ['Iwpi1Lm6dFo', 'yoD8RMq2OkU'],
+            'excel' => ['Vl0H-eTkFBs', '0nbkaYsR94c'],
+            'accounting' => ['yYX4bvQSqbo', 'AcfKhZXF9y4'],
+            'compliance' => ['aTL6P6YgSrA', 'sKbj5L4NXnY'],
+            'security' => ['inWWhr5tnEA', 'sdpxddDzXfE'],
+            'phishing' => ['XBkzBrXlle0', 'Y7zNlEMDmAI'],
+            'ai' => ['JMUxmLyrhSk', '2ePf9rue1Ao', 'aircAruvnKk'],
+            'prompt' => ['jC4v5AS4RIM', '_ZvnD96BXqo'],
+            'photography' => ['V7z7BAZdt2M', 'LxO-6rlihSg'],
+            'lighting' => ['V7z7BAZdt2M', 'GximhhWeKK4'],
+            'stock' => ['A7fZp9dwELo', 'Xn7KWR9EOGQ'],
+            'finance' => ['WEDIj9JBTC8', 'HQnNQ1FBiME'],
+            'first_aid' => ['ea1RJUOiNfQ', 'AEP3ppbQnFI'],
+            'cooking' => ['bJUiWdM__Qw', 'Cit2jWRRaUw'],
+            'time_management' => ['iONDebHX9qk', 'iDbdXTMnOXM'],
+            'productivity' => ['k6Uxc5n7pHo', 'LAj2fFYQPHE'],
+            'general' => ['dQw4w9WgXcQ', 'rfscVS0vtbw', 'W6NZfCO5SIk'],
+        ];
+    }
+
+    /**
+     * Get a YouTube embed URL for a lesson based on its title and category.
+     */
+    public static function videoUrlForLesson(string $lessonTitle, string $category, int $index): string
+    {
+        $pool = self::youtubeVideoPool();
+        $lower = strtolower($lessonTitle . ' ' . $category);
+
+        // Try to match a keyword from the pool
+        $matched = null;
+        foreach ($pool as $keyword => $videos) {
+            if (str_contains($lower, $keyword)) {
+                $matched = $videos;
+                break;
+            }
+        }
+
+        // Fallback to category-based or general
+        if ($matched === null) {
+            $catKey = strtolower($category);
+            $matched = $pool[$catKey] ?? $pool['general'];
+        }
+
+        $videoId = $matched[$index % count($matched)];
+
+        return 'https://www.youtube.com/watch?v=' . $videoId;
     }
 
     public static function thumbnailUrl(string $subdomain, string $slug): string

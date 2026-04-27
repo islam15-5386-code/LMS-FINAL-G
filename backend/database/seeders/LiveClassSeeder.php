@@ -21,7 +21,7 @@ class LiveClassSeeder extends Seeder
             ->orderBy('id')
             ->get()
             ->each(function (Course $course, int $courseIndex): void {
-                $sessionCount = (($courseIndex + $course->tenant_id) % 2) + 1;
+                $sessionCount = 10;
 
                 for ($sessionIndex = 0; $sessionIndex < $sessionCount; $sessionIndex++) {
                     $status = $sessionIndex === 0

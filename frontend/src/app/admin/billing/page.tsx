@@ -123,7 +123,7 @@ export default function AdminBillingPage() {
                   <tbody>
                     {invoices.slice(0, 8).map((inv) => (
                       <tr key={inv.id}>
-                        <td className="font-mono text-xs text-muted-foreground">{inv.id.slice(0, 12)}…</td>
+                        <td className="font-mono text-xs text-muted-foreground">{String(inv.id).slice(0, 12)}…</td>
                         <td className="font-semibold text-foreground text-sm">৳{inv.amountBdt}</td>
                         <td className="text-sm text-muted-foreground">
                           {inv.issuedAt ? new Date(inv.issuedAt).toLocaleDateString("en-BD") : "Not issued"}

@@ -23,6 +23,7 @@ import {
   SelectInput,
   StatCard,
   TextInput,
+  TextArea,
   downloadTextFile,
   emailForName,
   openMailDraft
@@ -172,15 +173,17 @@ export function CompliancePanel() {
   const { state, currentUser, sendComplianceReminders } = useMockLms();
   const incompleteLearners = state.complianceRecords.filter((record) => !record.certified || record.completionPercent < 100);
   const [showAllRecords, setShowAllRecords] = useState(false);
-  const [selectedRecipientId, setSelectedRecipientId] = useState(incompleteLearners[0]?.id ?? state.complianceRecords[0]?.id ?? "");
   const visibleComplianceRecords = showAllRecords ? state.complianceRecords : state.complianceRecords.slice(0, 5);
-  const selectedRecipient =
-    state.complianceRecords.find((record) => record.id === selectedRecipientId) ??
-    incompleteLearners[0] ??
-    state.complianceRecords[0];
-  const recipientEmail = selectedRecipient ? emailForName(selectedRecipient.employeeName) : "";
-  const subject = selectedRecipient ? `Compliance reminder for ${selectedRecipient.courseTitle}` : "Compliance reminder";
-  const body = selectedRecipient
+
+  const [emailInput, setEmailInput] = useState("tanvirulislam5386@gmail.com");
+
+  const selectedUser = state.users.find((u) => u.email === emailInput);
+  const selectedRecipient = selectedUser
+    ? state.complianceRecords.find((r) => r.employeeName === selectedUser.name)
+    : null;
+
+  const defaultSubject = selectedRecipient ? `Compliance reminder for ${selectedRecipient.courseTitle}` : "System Notification";
+  const defaultBody = selectedRecipient
     ? [
         `Hello ${selectedRecipient.employeeName},`,
         "",
@@ -192,7 +195,17 @@ export function CompliancePanel() {
         "Regards,",
         "Smart LMS Compliance Team"
       ].join("\n")
-    : "Please complete your pending compliance course.";
+    : "Hello,\n\nPlease log in to check your latest updates.\n\nRegards,\nSmart LMS Team";
+
+  const [customSubject, setCustomSubject] = useState(defaultSubject);
+  const [customBody, setCustomBody] = useState(defaultBody);
+
+  useEffect(() => {
+    setCustomSubject(defaultSubject);
+    setCustomBody(defaultBody);
+  }, [emailInput, selectedUser, selectedRecipient]);
+
+  const { sendCustomEmail } = useMockLms();
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -263,43 +276,64 @@ export function CompliancePanel() {
         <div className="mt-6 rounded-[1.5rem] border border-border/70 bg-background/75 p-4 shadow-soft dark:border-white/8 dark:bg-white/5">
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-[#1A1A2E] dark:text-[#F5C766]" />
-            <p className="text-sm font-semibold">Email sending function</p>
+            <p className="text-sm font-semibold">Send Email via SMTP</p>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Works now by opening the default mail app from the browser, so reminders can be sent immediately without waiting for backend SMTP integration.
+            Write and send an email directly to any user. It uses the SMTP configuration set in your backend <code className="text-xs bg-white/10 px-1 py-0.5 rounded">.env</code>.
           </p>
           <div className="mt-4 grid gap-3">
-            <SelectInput value={selectedRecipientId} onChange={(event) => setSelectedRecipientId(event.target.value)}>
-              {state.complianceRecords.map((record) => (
-                <option key={record.id} value={record.id}>
-                  {record.employeeName} - {record.courseTitle}
-                </option>
-              ))}
-            </SelectInput>
-            <div className="rounded-2xl border border-border/70 bg-card/85 px-4 py-3 text-sm shadow-soft dark:border-white/8 dark:bg-white/5">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Recipient email</p>
-              <p className="mt-1 font-medium">{recipientEmail}</p>
+            <div className="rounded-2xl border border-border/70 bg-card/85 px-4 py-4 text-sm shadow-soft dark:border-white/8 dark:bg-white/5 flex flex-col gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Recipient email</p>
+                <SelectInput 
+                  value={emailInput} 
+                  onChange={(event) => setEmailInput(event.target.value)}
+                >
+                  <option value="tanvirulislam5386@gmail.com">tanvirulislam5386@gmail.com (Default)</option>
+                  {state.users
+                    .filter((user) => user.role === "student")
+                    .map((user) => (
+                      <option key={user.id} value={user.email}>
+                        {user.email} ({user.name})
+                      </option>
+                  ))}
+                </SelectInput>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Subject</p>
+                <TextInput 
+                  value={customSubject} 
+                  onChange={(e) => setCustomSubject(e.target.value)} 
+                  placeholder="Email subject" 
+                />
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-2">Body</p>
+                <TextArea 
+                  value={customBody} 
+                  onChange={(e) => setCustomBody(e.target.value)} 
+                  rows={6}
+                  placeholder="Email message..." 
+                />
+              </div>
             </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <PrimaryButton
                 onClick={() => {
-                  if (!selectedRecipient) return;
-                  sendComplianceReminders(selectedRecipient.courseId);
-                  openMailDraft({
-                    to: recipientEmail,
-                    subject,
-                    body
-                  });
+                  sendCustomEmail(emailInput, customSubject, customBody);
                 }}
               >
                 <SendHorizontal className="mr-2 h-4 w-4" />
-                Open mail app
+                Send Email
               </PrimaryButton>
               <SecondaryButton
                 onClick={() =>
                   downloadTextFile(
-                    `${selectedRecipient?.employeeName.replace(/\s+/g, "-").toLowerCase() ?? "compliance"}-mail-draft.txt`,
-                    `To: ${recipientEmail}\nSubject: ${subject}\n\n${body}`
+                    `${emailInput.split('@')[0] ?? "user"}-mail-draft.txt`,
+                    `To: ${emailInput}\nSubject: ${customSubject}\n\n${customBody}`
                   )
                 }
               >

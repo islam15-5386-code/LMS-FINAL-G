@@ -14,6 +14,7 @@ use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class LiveClassController extends Controller
@@ -46,7 +47,7 @@ class LiveClassController extends Controller
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'duration_minutes' => ['required', 'integer', 'min:15', 'max:300'],
-            'meeting_type' => ['nullable', 'in:jitsi'],
+            'meeting_type' => ['nullable', 'in:jitsi,external'],
             'meeting_link' => ['nullable', 'string', 'max:2048'],
             'status' => ['nullable', 'in:scheduled,live,completed,cancelled'],
         ]);
@@ -59,9 +60,14 @@ class LiveClassController extends Controller
 
         abort_if($endAt->lessThanOrEqualTo($startAt), 422, 'End time must be after start time.');
 
-        $meetingType = 'jitsi';
+        $meetingType = $validated['meeting_type'] ?? 'jitsi';
         $roomSlug = Str::slug($validated['title']) . '-' . Str::lower(Str::random(8));
-        $meetingLink = 'https://meet.jit.si/' . $roomSlug;
+        
+        $meetingLink = $meetingType === 'external' 
+            ? ($validated['meeting_link'] ?? '') 
+            : 'https://meet.jit.si/' . $roomSlug;
+            
+        $provider = $meetingType === 'external' ? 'External' : 'Jitsi';
 
         $liveClass = LiveClass::query()->create([
             'tenant_id' => $user->tenant_id,
@@ -72,7 +78,7 @@ class LiveClassController extends Controller
             'description' => $validated['description'] ?? null,
             'meeting_type' => $meetingType,
             'meeting_link' => $meetingLink,
-            'provider' => 'Jitsi',
+            'provider' => $provider,
             'room_slug' => $roomSlug,
             'meeting_url' => $meetingLink,
             'scheduled_at' => $startAt,
@@ -91,6 +97,25 @@ class LiveClassController extends Controller
 
         LmsSupport::audit($user, 'Scheduled live class', $liveClass->title, $request->ip());
         LmsSupport::notify($user->tenant, 'Student', 'live-class', sprintf('Live class "%s" has been scheduled.', $liveClass->title));
+
+        try {
+            $studentEmails = \App\Models\User::query()
+                ->whereHas('enrollments', fn ($q) => $q->where('course_id', $course->id))
+                ->whereNotNull('email')
+                ->pluck('email')
+                ->toArray();
+
+            if (!empty($studentEmails)) {
+                Mail::raw(
+                    "Hello,\n\nA new live class '{$liveClass->title}' has been scheduled for {$liveClass->start_at->format('Y-m-d H:i')} ({$liveClass->duration_minutes} mins).\n\nMeeting Link: {$liveClass->meeting_link}\n\nPlease join on time.",
+                    function ($message) use ($studentEmails, $liveClass) {
+                        $message->to($studentEmails)->subject("Live Class Scheduled: {$liveClass->title}");
+                    }
+                );
+            }
+        } catch (\Throwable $e) {
+            // Ignore email failure
+        }
 
         return response()->json([
             'success' => true,
@@ -316,10 +341,10 @@ class LiveClassController extends Controller
 
     private function authorizeVisibleLiveClass(User $user, LiveClass $liveClass): void
     {
-        abort_if($liveClass->tenant_id !== $user->tenant_id, 403, 'Invalid tenant access.');
+        abort_if($liveClass->tenant_id != $user->tenant_id, 403, 'Invalid tenant access.');
 
         if ($user->role === 'teacher') {
-            abort_if($liveClass->teacher_id !== $user->id, 403, 'You cannot access this live class.');
+            abort_if($liveClass->teacher_id != $user->id, 403, 'You cannot access this live class.');
         }
 
         if ($user->role === 'student') {
@@ -335,10 +360,10 @@ class LiveClassController extends Controller
 
     private function authorizeManageLiveClass(User $user, LiveClass $liveClass): void
     {
-        abort_if($liveClass->tenant_id !== $user->tenant_id, 403, 'Invalid tenant access.');
+        abort_if($liveClass->tenant_id != $user->tenant_id, 403, 'Invalid tenant access.');
 
         if ($user->role === 'teacher') {
-            abort_if($liveClass->teacher_id !== $user->id, 403, 'You cannot manage this live class.');
+            abort_if($liveClass->teacher_id != $user->id, 403, 'You cannot manage this live class.');
         }
     }
 

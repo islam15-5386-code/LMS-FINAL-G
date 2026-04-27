@@ -52,9 +52,9 @@ class BillingSeeder extends Seeder
                 ]
             );
 
-            for ($invoiceIndex = 0; $invoiceIndex < 4; $invoiceIndex++) {
-                $issuedAt = Carbon::now()->startOfMonth()->subMonths(3 - $invoiceIndex)->addDays(1);
-                $paymentStatus = $invoiceIndex === 3 ? $billingStatus : 'paid';
+            for ($invoiceIndex = 0; $invoiceIndex < 10; $invoiceIndex++) {
+                $issuedAt = Carbon::now()->startOfMonth()->subMonths(9 - $invoiceIndex)->addDays(1);
+                $paymentStatus = $invoiceIndex === 9 ? $billingStatus : 'paid';
 
                 Invoice::query()->updateOrCreate(
                     [

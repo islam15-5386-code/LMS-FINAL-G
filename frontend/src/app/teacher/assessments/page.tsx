@@ -4,12 +4,11 @@ import { useState } from "react";
 import { Sparkles, Upload, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { DashboardLayout, PageHeader, StatusBadge, EmptyState } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
-import { readNoteFile } from "@/lib/utils/lms-helpers";
 
 type AssessmentType = "MCQ" | "Essay" | "Short Answer";
 
 export default function TeacherAssessmentsPage() {
-  const { state, createAssessmentDraft, publishAssessment } = useMockLms();
+  const { state, createAssessmentDraft, publishAssessment, extractNoteText } = useMockLms();
   const [tab, setTab] = useState<"list" | "generate">("list");
   const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -32,7 +31,7 @@ export default function TeacherAssessmentsPage() {
     setNoteFile(file);
     setUploading(true);
     try {
-      const text = await readNoteFile(file);
+      const text = await extractNoteText(file);
       setGenForm((f) => ({ ...f, sourceText: text }));
     } catch {
       // fallback

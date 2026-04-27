@@ -44,8 +44,10 @@ import {
   updateBillingOnBackend,
   updateLiveClassStatusOnBackend,
   uploadLessonContentOnBackend,
-  updateTenantBrandingOnBackend
+  updateTenantBrandingOnBackend,
+  uploadTeacherNote
 } from "@/lib/api/lms-backend";
+import { readNoteFile } from "@/lib/utils/lms-helpers";
 
 type CreateCoursePayload = {
   title: string;
@@ -110,6 +112,8 @@ type MockLmsContextType = {
   updatePlan: (plan: PlanTier) => Promise<void>;
   updateActiveStudents: (activeStudents: number) => Promise<void>;
   sendComplianceReminders: (courseId: string) => Promise<void>;
+  sendCustomEmail: (to: string, subject: string, body: string) => Promise<void>;
+  extractNoteText: (file: File) => Promise<string>;
 };
 
 const MockLmsContext = createContext<MockLmsContextType | null>(null);
@@ -741,6 +745,13 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         ]
       }));
     },
+    async extractNoteText(file) {
+      if (currentUser) {
+        const result = await uploadTeacherNote(file);
+        return result.extractedText ?? "";
+      }
+      return readNoteFile(file);
+    },
     async setLiveClassStatus(classId, status) {
       if (currentUser) {
         await updateLiveClassStatusOnBackend(classId, status);
@@ -911,6 +922,28 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
           ]
         };
       });
+    },
+    async sendCustomEmail(to: string, subject: string, body: string) {
+      try {
+        const token = currentUser ? currentUser.token : localStorage.getItem("auth_token");
+        const response = await fetch("http://127.0.0.1:8000/api/v1/emails/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ to, subject, body })
+        });
+        const result = await response.json();
+        if (result.success) {
+          alert("Email sent successfully via SMTP backend.");
+        } else {
+          alert(result.message || "Failed to send email.");
+        }
+      } catch (error) {
+        alert("Error sending email via SMTP.");
+      }
     }
   }), [authReady, currentUser, derivedState, state]);
 

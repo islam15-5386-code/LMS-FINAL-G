@@ -26,11 +26,11 @@ class CourseSeeder extends Seeder
                 ->get()
                 ->values();
 
-            for ($courseIndex = 0; $courseIndex < 8; $courseIndex++) {
-                $template = $catalog[($tenant->id + $courseIndex - 1) % count($catalog)];
+            for ($courseIndex = 0; $courseIndex < 40; $courseIndex++) {
+                $template = $catalog[$courseIndex % count($catalog)];
                 $teacher = $teachers[$courseIndex % max(1, $teachers->count())];
-                $slug = Str::slug($tenant->subdomain . '-' . $template['title']);
-                $status = (($courseIndex + $tenant->id) % 5 === 0) ? 'draft' : 'published';
+                $slug = Str::slug($tenant->subdomain . '-' . $template['title'] . '-' . ($courseIndex + 1));
+                $status = ($courseIndex < 10) ? 'published' : ((($courseIndex + $tenant->id) % 7 === 0) ? 'draft' : 'published');
 
                 $course = Course::query()->updateOrCreate(
                     ['slug' => $slug],
@@ -102,6 +102,13 @@ class CourseSeeder extends Seeder
             $lessonSlice = array_slice($lessonPool, $moduleIndex * $lessonsPerModule, $lessonsPerModule);
 
             foreach ($lessonSlice as $lessonIndex => $lessonData) {
+                $globalLessonIndex = ($moduleIndex * $lessonsPerModule) + $lessonIndex;
+                $videoUrl = BangladeshLmsDataset::videoUrlForLesson(
+                    $lessonData['title'],
+                    $template['category'] ?? 'General',
+                    $globalLessonIndex
+                );
+
                 Lesson::query()->updateOrCreate(
                     [
                         'course_module_id' => $module->id,
@@ -110,6 +117,9 @@ class CourseSeeder extends Seeder
                     [
                         'title' => $lessonData['title'],
                         'type' => $lessonData['type'],
+                        'content_url' => $videoUrl,
+                        'content_mime' => 'video/youtube',
+                        'content_original_name' => $lessonData['title'] . ' - YouTube',
                         'duration_minutes' => 18 + (($tenantIndex + $courseIndex + $position) % 25),
                         'release_at' => Carbon::now()->subDays(($tenantIndex + $courseIndex) % 10)->addDays($moduleIndex + $lessonIndex),
                     ]

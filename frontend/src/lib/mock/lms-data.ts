@@ -516,6 +516,44 @@ export const seedState: MockLmsState = {
       ]
     },
     {
+      id: "course-fullstack",
+      title: "Full Stack Web Development",
+      category: "Development",
+      description: "Hands-on full stack web development for Bangladeshi job market projects using Laravel and Next.js.",
+      status: "published",
+      price: 499,
+      enrollmentCount: 85,
+      modules: [
+        {
+          id: "module-fs-1",
+          title: "Backend Core",
+          dripDays: 0,
+          lessons: [
+            { id: "lesson-fs-1", title: "Laravel Routing", type: "video", durationMinutes: 25, releaseAt: isoDate(0, 5), completedBy: [] }
+          ]
+        }
+      ]
+    },
+    {
+      id: "course-flutter",
+      title: "Flutter App Development",
+      category: "Development",
+      description: "Build Android-ready cross platform apps with Flutter and Firebase.",
+      status: "published",
+      price: 399,
+      enrollmentCount: 120,
+      modules: [
+        {
+          id: "module-fl-1",
+          title: "Dart Basics",
+          dripDays: 0,
+          lessons: [
+            { id: "lesson-fl-1", title: "Intro to Dart", type: "video", durationMinutes: 15, releaseAt: isoDate(0, 6), completedBy: [] }
+          ]
+        }
+      ]
+    },
+    {
       id: "course-product",
       title: "Future of Product Teams",
       category: "Leadership",

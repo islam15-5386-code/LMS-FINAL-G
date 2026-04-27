@@ -16,7 +16,9 @@ import {
   Sparkles,
   SunMedium,
   Users,
-  Video
+  Video,
+  Play,
+  FileText
 } from "lucide-react";
 import { useState } from "react";
 
@@ -36,6 +38,7 @@ import {
   TextInput,
   pageFrame
 } from "@/components/shared/lms-core";
+import { YouTubePlayer } from "@/components/shared/youtube-player";
 
 const catalogSlugMap: Record<string, string> = {
   "future-of-product-teams": "course-product",
@@ -439,25 +442,25 @@ export function HomeExperience() {
                 <span className="font-serif text-lg font-semibold">{state.branding.logoText || "SL"}</span>
               </div>
               <div>
-                <p className="font-sans text-[2rem] font-black leading-none tracking-[-0.05em] text-black">
+                <p className="font-sans text-[2rem] font-black leading-none tracking-[-0.05em] text-foreground">
                   {state.branding.tenantName}
                 </p>
-                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-black/90">
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   Smart LMS
                 </p>
               </div>
             </Link>
           <div className="hidden items-center gap-5 lg:flex">
-            <a href="#courses" className="text-sm font-medium text-black transition hover:text-black/75">Explore</a>
-            <a href="#pricing" className="text-sm font-medium text-black transition hover:text-black/75">Degrees</a>
+            <a href="#courses" className="text-sm font-medium text-foreground transition hover:text-foreground/75">Explore</a>
+            <a href="#pricing" className="text-sm font-medium text-foreground transition hover:text-foreground/75">Degrees</a>
           </div>
         </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-black transition hover:text-black/75">
+            <Link href="/login" className="text-sm font-medium text-foreground transition hover:text-foreground/75">
               Log In
             </Link>
-            <Link href={primaryWorkspaceHref} className="rounded-lg border border-black px-4 py-2 text-sm font-bold text-black transition hover:bg-black hover:text-white">
+            <Link href={primaryWorkspaceHref} className="rounded-lg border border-foreground/30 px-4 py-2 text-sm font-bold text-foreground transition hover:bg-foreground hover:text-background">
               {isAuthenticated ? "Open Dashboard" : "Join for Free"}
             </Link>
           </div>
@@ -509,7 +512,7 @@ export function HomeExperience() {
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b9852b]">Top course</p>
                       <h2 className="mt-3 font-sans text-2xl font-bold leading-tight">{highlightCourses[0]?.title ?? "Course title"}</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-500">
                         {highlightCourses[0]?.description ?? "Premium course card connected to your live project data."}
                       </p>
                     </div>
@@ -532,7 +535,7 @@ export function HomeExperience() {
             <div className="absolute -bottom-7 right-5 hidden w-[220px] rounded-[1.4rem] bg-white p-4 text-slate-900 shadow-[0_22px_70px_rgba(0,0,0,0.25)] lg:block">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b9852b]">Live next</p>
               <p className="mt-2 font-sans text-lg font-bold leading-tight">{liveHighlights[0]?.title ?? "Weekly live session"}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-600">Automatic reminders, attendance, and recorded session workflow.</p>
+              <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-500">Automatic reminders, attendance, and recorded session workflow.</p>
             </div>
           </div>
         </div>
@@ -545,7 +548,7 @@ export function HomeExperience() {
           </h2>
           <div className="mt-8 grid gap-4 md:grid-cols-5">
             {partnerLabels.map((label) => (
-              <div key={label} className="flex min-h-[92px] items-center justify-center rounded-2xl border border-foreground/8 bg-background px-4 text-center text-sm font-semibold text-slate-600 shadow-soft">
+              <div key={label} className="flex min-h-[92px] items-center justify-center rounded-2xl border border-foreground/8 bg-background px-4 text-center text-sm font-semibold text-muted-foreground shadow-soft">
                 {label}
               </div>
             ))}
@@ -762,26 +765,40 @@ export function HomeExperience() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {liveHighlights.map((liveClass) => {
-              const course = state.courses.find((item) => item.id === liveClass.courseId);
-              const startDate = new Date(liveClass.startAt);
+            {liveHighlights?.map((liveClass) => {
+              if (!liveClass) return null;
+              const course = state.courses?.find((item) => item.id === liveClass.courseId);
+              const startDate = liveClass.startAt ? new Date(liveClass.startAt) : null;
+              const isValidDate = startDate && !isNaN(startDate.getTime());
 
               return (
-                <div key={liveClass.id} className="rounded-[1.8rem] border border-foreground/10 bg-background p-6 shadow-soft">
+                <div key={liveClass.id ?? Math.random()} className="rounded-[1.8rem] border border-foreground/10 bg-background p-6 shadow-soft">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#b9852b]">{liveClass.status}</p>
-                      <h3 className="mt-3 text-2xl font-bold leading-tight tracking-[-0.03em]">{liveClass.title}</h3>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#b9852b]">{liveClass.status ?? "Status"}</p>
+                      <h3 className="mt-3 text-2xl font-bold leading-tight tracking-[-0.03em]">{liveClass.title ?? "Live Class"}</h3>
                     </div>
                     <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#b9852b]/12 text-[#b9852b]">
                       <Video className="h-5 w-5" />
                     </span>
                   </div>
                   <div className="mt-5 space-y-3 text-sm text-muted-foreground">
-                    <p className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4" />{course?.title ?? "Course"}</p>
-                    <p className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" />{startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
-                    <p className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4" />{startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} for {liveClass.durationMinutes} minutes</p>
-                    <p className="inline-flex items-center gap-2"><Users className="h-4 w-4" />Limit {liveClass.participantLimit} learners</p>
+                    <p className="inline-flex items-center gap-2">
+                      {BookOpen && <BookOpen className="h-4 w-4" />}
+                      {course?.title ?? "Course"}
+                    </p>
+                    <p className="inline-flex items-center gap-2">
+                      {CalendarDays && <CalendarDays className="h-4 w-4" />}
+                      {isValidDate ? startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "TBA"}
+                    </p>
+                    <p className="inline-flex items-center gap-2">
+                      {Clock3 && <Clock3 className="h-4 w-4" />}
+                      {isValidDate ? startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "TBA"} for {liveClass.durationMinutes ?? 0} minutes
+                    </p>
+                    <p className="inline-flex items-center gap-2">
+                      {Users && <Users className="h-4 w-4" />}
+                      Limit {liveClass.participantLimit ?? 0} learners
+                    </p>
                   </div>
                 </div>
               );
@@ -858,6 +875,7 @@ export function MarketingPageExperience({ slug }: { slug: string }) {
 
 export function CatalogCourseExperience({ slug }: { slug: string }) {
   const { state } = useMockLms();
+  const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
   const resolvedSlug = catalogSlugMap[slug] ?? slug;
   const course = state.courses.find((item) => item.id === resolvedSlug);
 
@@ -943,16 +961,56 @@ export function CatalogCourseExperience({ slug }: { slug: string }) {
               <p className="font-serif text-2xl">{module.title}</p>
               <p className="mt-2 text-sm text-muted-foreground">Drip release: +{module.dripDays} days</p>
               <div className="mt-4 grid gap-2">
-                {module.lessons.map((lesson) => (
-                  <div key={lesson.id} className="rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 text-sm">
-                    {lesson.title} · {lesson.type} · {lesson.durationMinutes} min
-                  </div>
-                ))}
+                {module.lessons.map((lesson) => {
+                  const hasVideo = !!lesson.contentUrl && /youtube\.com|youtu\.be/.test(lesson.contentUrl);
+                  const videoId = hasVideo ? (lesson.contentUrl!.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1] ?? lesson.contentUrl!.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)?.[1]) : null;
+                  const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+
+                  return (
+                    <button
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => { if (hasVideo) setActiveVideo({ url: lesson.contentUrl!, title: lesson.title }); }}
+                      className={`flex items-center gap-3 rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 text-sm text-left transition-all ${hasVideo ? "hover:border-red-300 hover:shadow-sm cursor-pointer" : "cursor-default"}`}
+                    >
+                      {hasVideo && thumbnail ? (
+                        <div className="group relative w-20 h-12 rounded-lg overflow-hidden shrink-0 border border-border/50">
+                          <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors">
+                            <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center">
+                              <PlayIcon className="w-2.5 h-2.5 text-white fill-white ml-px" />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <FileTextIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium truncate ${hasVideo ? "group-hover:text-red-600" : ""}`}>{lesson.title}</p>
+                        <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                          {lesson.type} · {lesson.durationMinutes} min
+                          {hasVideo && <span className="ml-1.5 text-red-500 font-medium">▶ Video</span>}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
         </div>
       </Section>
+
+      {activeVideo && (
+        <YouTubePlayer
+          videoUrl={activeVideo.url}
+          title={activeVideo.title}
+          onClose={() => setActiveVideo(null)}
+        />
+      )}
     </div>
   );
 }
+
