@@ -11,7 +11,11 @@ import {
   Layers3,
   Settings2,
   Upload,
-  Users
+  Users,
+  ChevronUp,
+  ChevronDown,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -27,7 +31,8 @@ import {
   fetchTeacherAssessmentBootstrap,
   generateTeacherAssessmentDraft,
   publishTeacherAssessment,
-  uploadTeacherNote
+  uploadTeacherNote,
+  createLiveClassOnBackend
 } from "@/lib/api/lms-backend";
 
 import {
@@ -47,7 +52,7 @@ import {
 } from "@/components/shared/lms-core";
 
 export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string }) {
-  const { state, createCourse, publishCourse, addModule, addLesson, uploadLessonContent } = useMockLms();
+  const { state, createCourse, publishCourse, addModule, addLesson, uploadLessonContent, updateModule, deleteModule, reorderModules, updateLesson, deleteLesson, reorderLessons } = useMockLms();
   const [courseForm, setCourseForm] = useState({
     title: "",
     category: "Operations",
@@ -60,9 +65,10 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
   const [lessonDuration, setLessonDuration] = useState(15);
   const [lessonReleaseAt, setLessonReleaseAt] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
   const selectedCourse = state.courses.find((course) => course.id === defaultCourseId) ?? state.courses[0];
-  const selectedModule = selectedCourse?.modules[0];
+  const selectedModule = selectedModuleId ? selectedCourse?.modules.find(m => m.id === selectedModuleId) : selectedCourse?.modules[0];
   const [showAllLessonUploads, setShowAllLessonUploads] = useState(false);
   const [showAllPortfolioCourses, setShowAllPortfolioCourses] = useState(false);
   const visibleLessonUploads = showAllLessonUploads ? (selectedModule?.lessons ?? []) : (selectedModule?.lessons ?? []).slice(0, 5);
@@ -117,6 +123,62 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
               <PrimaryButton className="min-h-[42px] px-5" onClick={() => publishCourse(selectedCourse.id)}>
                 Publish course
               </PrimaryButton>
+            </div>
+
+            <div className="grid gap-4 mt-6">
+              {selectedCourse.modules.map((module, mIndex) => (
+                <div key={module.id} className="rounded-[16px] border border-foreground/10 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <p className="font-semibold">{module.title}</p>
+                    <div className="flex gap-2">
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => { const t = prompt("New module title", module.title); if (t) updateModule(selectedCourse.id, module.id, t, module.dripDays); }}><Pencil className="w-3 h-3" /></SecondaryButton>
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs text-red-500" onClick={() => { if(confirm("Delete module?")) deleteModule(selectedCourse.id, module.id); }}><Trash2 className="w-3 h-3" /></SecondaryButton>
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => {
+                        const arr = [...selectedCourse.modules];
+                        if (mIndex > 0) {
+                          [arr[mIndex - 1], arr[mIndex]] = [arr[mIndex], arr[mIndex - 1]];
+                          reorderModules(selectedCourse.id, arr.map(x => x.id));
+                        }
+                      }}><ChevronUp className="w-3 h-3" /></SecondaryButton>
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => {
+                        const arr = [...selectedCourse.modules];
+                        if (mIndex < arr.length - 1) {
+                          [arr[mIndex + 1], arr[mIndex]] = [arr[mIndex], arr[mIndex + 1]];
+                          reorderModules(selectedCourse.id, arr.map(x => x.id));
+                        }
+                      }}><ChevronDown className="w-3 h-3" /></SecondaryButton>
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => setSelectedModuleId(module.id)}>Add Lesson</SecondaryButton>
+                    </div>
+                  </div>
+                  {module.lessons.length > 0 && (
+                    <div className="grid gap-2 pl-4 border-l-2 border-foreground/5 mt-2">
+                      {module.lessons.map((lesson, lIndex) => (
+                        <div key={lesson.id} className="flex justify-between items-center bg-white dark:bg-white/5 p-2 rounded border border-foreground/5">
+                          <span className="text-sm">{lesson.title} ({lesson.type})</span>
+                          <div className="flex gap-1">
+                            <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => { const t = prompt("New lesson title", lesson.title); if (t) updateLesson(selectedCourse.id, module.id, lesson.id, { ...lesson, title: t }); }}><Pencil className="w-3 h-3" /></button>
+                            <button className="p-1 hover:bg-foreground/5 rounded text-red-500" onClick={() => { if(confirm("Delete lesson?")) deleteLesson(selectedCourse.id, module.id, lesson.id); }}><Trash2 className="w-3 h-3" /></button>
+                            <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => {
+                              const arr = [...module.lessons];
+                              if (lIndex > 0) {
+                                [arr[lIndex - 1], arr[lIndex]] = [arr[lIndex], arr[lIndex - 1]];
+                                reorderLessons(selectedCourse.id, module.id, arr.map(x => x.id));
+                              }
+                            }}><ChevronUp className="w-3 h-3" /></button>
+                            <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => {
+                              const arr = [...module.lessons];
+                              if (lIndex < arr.length - 1) {
+                                [arr[lIndex + 1], arr[lIndex]] = [arr[lIndex], arr[lIndex + 1]];
+                                reorderLessons(selectedCourse.id, module.id, arr.map(x => x.id));
+                              }
+                            }}><ChevronDown className="w-3 h-3" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
             {selectedModule ? (
@@ -809,11 +871,19 @@ export function LiveClassesPanel() {
           )}
           <TextInput type="number" value={form.durationMinutes} onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })} />
           <PrimaryButton
-            onClick={() => scheduleLiveClass({
-              ...form,
-              meetingType: form.meetingType,
-              meetingLink: form.meetingType === "external" ? form.meetingLink : undefined
-            })}
+            onClick={async () => {
+              try {
+                await createLiveClassOnBackend({
+                  ...form,
+                  meetingType: form.meetingType,
+                  meetingLink: form.meetingType === "external" ? form.meetingLink : undefined,
+                });
+                alert("Live class scheduled successfully!");
+              } catch (e) {
+                console.error("Failed to schedule live class", e);
+                alert("Failed to schedule live class: " + (e instanceof Error ? e.message : "Unknown error"));
+              }
+            }}
           >
             Schedule live class
           </PrimaryButton>
@@ -1051,29 +1121,79 @@ export function TeacherSettingsPanel() {
 }
 
 export function TeacherAnnouncementsPanel() {
-  const { state } = useMockLms();
+  const { state, createAnnouncement } = useMockLms();
+  const [announcement, setAnnouncement] = useState("");
+  const [audience, setAudience] = useState("All");
+  const [isPosting, setIsPosting] = useState(false);
+
   const teacherNotices = state.notifications.filter((notification) => notification.audience === "Teacher" || notification.audience === "All");
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
   const visibleTeacherNotices = showAllAnnouncements ? teacherNotices : teacherNotices.slice(0, 5);
 
+  const handlePost = async () => {
+    if (!announcement.trim()) return;
+    setIsPosting(true);
+    try {
+      await createAnnouncement({
+        message: announcement,
+        audience,
+        type: "announcement"
+      });
+      setAnnouncement("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   return (
-    <Section title="Announcements" subtitle="Course announcements, assignment reminders, and session notices can be coordinated from one teacher-facing stream.">
-      <div className="grid gap-4">
-        {visibleTeacherNotices.map((notice) => (
-          <div key={notice.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-4 dark:border-white/8 dark:bg-[#13212a]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-2">
-                <Badge>{notice.type}</Badge>
-                <Badge>{notice.audience}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">{new Date(notice.createdAt).toLocaleString()}</p>
+    <div className="grid gap-7">
+      <Section title="Post announcement" subtitle="Send a message to your students or other teachers.">
+        <div className="grid gap-4">
+          <TextArea
+            value={announcement}
+            onChange={(e) => setAnnouncement(e.target.value)}
+            placeholder="Write your announcement here..."
+            className="min-h-[120px]"
+          />
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <SelectInput value={audience} onChange={(e) => setAudience(e.target.value)}>
+                <option value="All">All Users</option>
+                <option value="Student">Students Only</option>
+                <option value="Teacher">Teachers Only</option>
+              </SelectInput>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">{notice.message}</p>
+            <PrimaryButton onClick={handlePost} disabled={isPosting || !announcement.trim()}>
+              {isPosting ? "Posting..." : "Post Announcement"}
+            </PrimaryButton>
           </div>
-        ))}
-      </div>
-      {teacherNotices.length > 5 ? <SeeMoreButton expanded={showAllAnnouncements} remaining={teacherNotices.length - 5} onClick={() => setShowAllAnnouncements((current) => !current)} /> : null}
-    </Section>
+        </div>
+      </Section>
+
+      <Section title="History" subtitle="Review learner-facing messages and class communication.">
+        <div className="grid gap-4">
+          {visibleTeacherNotices.length > 0 ? (
+            visibleTeacherNotices.map((notice) => (
+              <div key={notice.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-4 dark:border-white/8 dark:bg-[#13212a]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex gap-2">
+                    <Badge>{notice.type}</Badge>
+                    <Badge>{notice.audience}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{new Date(notice.createdAt).toLocaleString()}</p>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">{notice.message}</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No announcements found.</p>
+          )}
+        </div>
+        {teacherNotices.length > 5 ? <SeeMoreButton expanded={showAllAnnouncements} remaining={teacherNotices.length - 5} onClick={() => setShowAllAnnouncements((current) => !current)} /> : null}
+      </Section>
+    </div>
   );
 }
 

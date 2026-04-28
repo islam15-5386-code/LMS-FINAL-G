@@ -46,10 +46,21 @@ import {
   signOutFromBackend,
   submitAssessmentOnBackend,
   updateBillingOnBackend,
+  updateCourseModuleOnBackend,
+  deleteCourseModuleOnBackend,
+  reorderCourseModulesOnBackend,
+  updateCourseLessonOnBackend,
+  deleteCourseLessonOnBackend,
+  reorderCourseLessonsOnBackend,
   updateLiveClassStatusOnBackend,
   uploadLessonContentOnBackend,
   updateTenantBrandingOnBackend,
-  uploadTeacherNote
+  uploadTeacherNote,
+  createPaymentOnBackend,
+  initiateSslCommerzPayment,
+  updateAssessmentQuestionOnBackend,
+  deleteAssessmentQuestionOnBackend,
+  createAnnouncementOnBackend
 } from "@/lib/api/lms-backend";
 import { readNoteFile } from "@/lib/utils/lms-helpers";
 
@@ -107,18 +118,33 @@ type MockLmsContextType = {
   publishCourse: (courseId: string) => Promise<void>;
   setCourseAssessmentGate: (courseId: string, enabled: boolean) => Promise<void>;
   addModule: (courseId: string, title: string) => Promise<void>;
+  updateModule: (courseId: string, moduleId: string, title: string, dripDays?: number) => Promise<void>;
+  deleteModule: (courseId: string, moduleId: string) => Promise<void>;
+  reorderModules: (courseId: string, moduleIds: string[]) => Promise<void>;
   addLesson: (
     courseId: string,
     moduleId: string,
     lesson: { title: string; type: "video" | "document" | "quiz" | "assignment" | "live"; durationMinutes: number; releaseAt?: string }
   ) => Promise<Lesson | null>;
+  updateLesson: (
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    lesson: { title: string; type: "video" | "document" | "quiz" | "assignment" | "live"; durationMinutes: number; releaseAt?: string }
+  ) => Promise<void>;
+  deleteLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  reorderLessons: (courseId: string, moduleId: string, lessonIds: string[]) => Promise<void>;
   uploadLessonContent: (courseId: string, moduleId: string, lessonId: string, file: File) => Promise<void>;
   markLessonComplete: (courseId: string, lessonId: string, studentName?: string) => Promise<void>;
   enrollInCourse: (courseId: string, studentName?: string) => Promise<void>;
   addToWishlist: (courseId: string) => Promise<void>;
   removeFromWishlist: (courseId: string) => Promise<void>;
   createAssessmentDraft: (payload: CreateAssessmentPayload) => Promise<void>;
+  createPayment: (courseId: string, amount: number, transactionId: string) => Promise<{ id: string }>;
+  initiateSslCommerz: (courseId: string) => Promise<{ gateway_url: string }>;
   publishAssessment: (assessmentId: string) => Promise<void>;
+  updateAssessmentQuestion: (assessmentId: string, questionId: string, payload: { prompt?: string; options?: string[]; answer?: string }) => Promise<void>;
+  deleteAssessmentQuestion: (assessmentId: string, questionId: string) => Promise<void>;
   submitAssessment: (assessmentId: string, studentName: string, answerText: string) => Promise<AssessmentSubmissionResult | null>;
   scheduleLiveClass: (payload: ScheduleLiveClassPayload) => Promise<void>;
   setLiveClassStatus: (classId: string, status: "scheduled" | "live" | "recorded") => Promise<void>;
@@ -129,6 +155,7 @@ type MockLmsContextType = {
   sendComplianceReminders: (courseId: string) => Promise<void>;
   sendCustomEmail: (to: string, subject: string, body: string) => Promise<void>;
   extractNoteText: (file: File) => Promise<string>;
+  createAnnouncement: (payload: { message: string; audience: string; type: string }) => Promise<void>;
 };
 
 const MockLmsContext = createContext<MockLmsContextType | null>(null);
@@ -238,6 +265,7 @@ function normalizeState(partial?: Partial<MockLmsState>): MockLmsState {
     auditEvents: partial?.auditEvents ?? seedState.auditEvents,
     complianceRecords: partial?.complianceRecords ?? seedState.complianceRecords,
     invoices: partial?.invoices ?? seedState.invoices,
+    payments: partial?.payments ?? seedState.payments ?? [],
     billing: partial?.billing ?? seedState.billing
   };
 }
@@ -485,6 +513,57 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         )
       }));
     },
+    async updateModule(courseId, moduleId, title, dripDays = 0) {
+      if (currentUser) {
+        await updateCourseModuleOnBackend(courseId, moduleId, title, dripDays);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) =>
+          course.id === courseId
+            ? {
+                ...course,
+                modules: course.modules.map((m) =>
+                  m.id === moduleId ? { ...m, title, dripDays } : m
+                )
+              }
+            : course
+        )
+      }));
+    },
+    async deleteModule(courseId, moduleId) {
+      if (currentUser) {
+        await deleteCourseModuleOnBackend(courseId, moduleId);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) =>
+          course.id === courseId
+            ? { ...course, modules: course.modules.filter((m) => m.id !== moduleId) }
+            : course
+        )
+      }));
+    },
+    async reorderModules(courseId, moduleIds) {
+      if (currentUser) {
+        await reorderCourseModulesOnBackend(courseId, moduleIds);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) => {
+          if (course.id !== courseId) return course;
+          const map = new Map(course.modules.map((m) => [m.id, m]));
+          const newModules = moduleIds.map((id) => map.get(id)).filter(Boolean) as typeof course.modules;
+          return { ...course, modules: newModules };
+        })
+      }));
+    },
     async addLesson(courseId, moduleId, lesson) {
       if (currentUser) {
         const createdLesson = await addCourseLessonOnBackend(courseId, moduleId, lesson);
@@ -524,6 +603,78 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
       }));
 
       return createdLesson;
+    },
+    async updateLesson(courseId, moduleId, lessonId, payload) {
+      if (currentUser) {
+        await updateCourseLessonOnBackend(courseId, moduleId, lessonId, payload);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) =>
+          course.id === courseId
+            ? {
+                ...course,
+                modules: course.modules.map((m) =>
+                  m.id === moduleId
+                    ? {
+                        ...m,
+                        lessons: m.lessons.map((l) =>
+                          l.id === lessonId ? { ...l, ...payload } : l
+                        )
+                      }
+                    : m
+                )
+              }
+            : course
+        )
+      }));
+    },
+    async deleteLesson(courseId, moduleId, lessonId) {
+      if (currentUser) {
+        await deleteCourseLessonOnBackend(courseId, moduleId, lessonId);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) =>
+          course.id === courseId
+            ? {
+                ...course,
+                modules: course.modules.map((m) =>
+                  m.id === moduleId
+                    ? { ...m, lessons: m.lessons.filter((l) => l.id !== lessonId) }
+                    : m
+                )
+              }
+            : course
+        )
+      }));
+    },
+    async reorderLessons(courseId, moduleId, lessonIds) {
+      if (currentUser) {
+        await reorderCourseLessonsOnBackend(courseId, moduleId, lessonIds);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) =>
+          course.id === courseId
+            ? {
+                ...course,
+                modules: course.modules.map((m) => {
+                  if (m.id !== moduleId) return m;
+                  const map = new Map(m.lessons.map((l) => [l.id, l]));
+                  const newLessons = lessonIds.map((id) => map.get(id)).filter(Boolean) as typeof m.lessons;
+                  return { ...m, lessons: newLessons };
+                })
+              }
+            : course
+        )
+      }));
     },
     async uploadLessonContent(courseId, moduleId, lessonId, file) {
       if (currentUser) {
@@ -753,6 +904,43 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         };
       });
     },
+    async createPayment(courseId, amount, transactionId) {
+      if (currentUser) {
+        const result = await createPaymentOnBackend(courseId, amount, transactionId);
+        await refreshBackendState();
+        return { id: (result as any).data?.id ?? uid("payment") };
+      }
+
+      const newPayment = {
+        id: uid("payment"),
+        tenantId: state.branding.tenantId,
+        userId: state.users.find(u => u.role === "student")?.id ?? uid("student"),
+        courseId,
+        amount,
+        dueAmount: 0,
+        status: "paid",
+        transactionId,
+        paidAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      setState((current) => ({
+        ...current,
+        payments: [newPayment, ...(current.payments || [])]
+      }));
+
+      // Also trigger enroll for mock since backend does it
+      await value.enrollInCourse(courseId);
+
+      return { id: newPayment.id };
+    },
+    async initiateSslCommerz(courseId) {
+      if (currentUser) {
+        return await initiateSslCommerzPayment(courseId);
+      }
+      // Mock gateway URL
+      return { gateway_url: "https://sandbox.sslcommerz.com/gwprocess/v4/api.php" };
+    },
     async createAssessmentDraft(payload) {
       if (currentUser) {
         await generateTeacherAssessmentDraft({
@@ -823,6 +1011,45 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
           createAuditEvent("Teacher", "Published assessment", assessmentId, current.branding.tenantId, current.branding.vendorId),
           ...current.auditEvents
         ]
+      }));
+    },
+    async updateAssessmentQuestion(assessmentId, questionId, payload) {
+      if (currentUser) {
+        await updateAssessmentQuestionOnBackend(assessmentId, questionId, payload);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        assessments: current.assessments.map((a) =>
+          a.id === assessmentId
+            ? {
+                ...a,
+                questions: a.questions.map((q) =>
+                  q.id === questionId ? { ...q, ...payload } : q
+                )
+              }
+            : a
+        )
+      }));
+    },
+    async deleteAssessmentQuestion(assessmentId, questionId) {
+      if (currentUser) {
+        await deleteAssessmentQuestionOnBackend(assessmentId, questionId);
+        await refreshBackendState();
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        assessments: current.assessments.map((a) =>
+          a.id === assessmentId
+            ? {
+                ...a,
+                questionCount: Math.max(0, a.questionCount - 1),
+                questions: a.questions.filter((q) => q.id !== questionId)
+              }
+            : a
+        )
       }));
     },
     async submitAssessment(assessmentId, studentName, answerText) {
@@ -943,12 +1170,35 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         ]
       }));
     },
-    async extractNoteText(file) {
+    async extractNoteText(file: File) {
       if (currentUser) {
         const result = await uploadTeacherNote(file);
         return result.extractedText ?? "";
       }
       return readNoteFile(file);
+    },
+    async createAnnouncement(payload) {
+      if (currentUser) {
+        await createAnnouncementOnBackend(payload);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        notifications: [
+          {
+            id: uid("notif"),
+            tenantId: current.branding.tenantId,
+            vendorId: current.branding.vendorId,
+            audience: payload.audience as any,
+            type: payload.type as any,
+            message: payload.message,
+            createdAt: new Date().toISOString()
+          },
+          ...current.notifications
+        ]
+      }));
     },
     async setLiveClassStatus(classId, status) {
       if (currentUser) {

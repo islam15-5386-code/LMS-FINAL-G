@@ -33,4 +33,31 @@ class NotificationController extends Controller
             ],
         ]);
     }
+
+    public function store(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        if (!in_array($user->role, ['admin', 'teacher'])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'message' => 'required|string',
+            'audience' => 'required|string|in:Student,Teacher,All,Admin',
+            'type' => 'required|string|in:system,announcement,assignment,assessment,live',
+        ]);
+
+        $notification = Notification::create([
+            'tenant_id' => $user->tenant_id,
+            'audience' => $validated['audience'],
+            'type' => $validated['type'],
+            'message' => $validated['message'],
+        ]);
+
+        return response()->json([
+            'message' => 'Announcement posted successfully.',
+            'data' => LmsSupport::serializeNotification($notification),
+        ], 201);
+    }
 }

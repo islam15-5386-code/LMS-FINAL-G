@@ -22,6 +22,7 @@ import {
   InstituteSettingsPanel,
   LiveClassMonitorPanel,
   NotificationsPanel,
+  PaymentsPanel,
   PlanManagementPanel,
   UserDirectoryPanel,
   SeatUtilizationPanel
@@ -179,6 +180,8 @@ export function WorkspaceExperience({
       content = <CertificatesPanel />;
     } else if (joined === "billing") {
       content = <BillingStudio />;
+    } else if (joined === "payments") {
+      content = <PaymentsPanel />;
     } else if (joined === "notifications") {
       content = <NotificationsPanel />;
     } else if (joined === "audit-logs") {

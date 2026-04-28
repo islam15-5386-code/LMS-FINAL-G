@@ -9,6 +9,10 @@ import { useMockLms } from "@/providers/mock-lms-provider";
 
 export default function TeacherCoursesPage() {
   const { state } = useMockLms();
+  const { currentUser } = useMockLms();
+
+  // Show only courses assigned to this teacher (unless admin)
+  const visibleCourses = currentUser?.role === 'admin' ? state.courses : state.courses.filter((c) => c.teacherId === currentUser?.id);
 
   return (
     <DashboardLayout role="teacher">
@@ -22,7 +26,7 @@ export default function TeacherCoursesPage() {
         subtitle="Open a course to upload lessons, support PDF/MP4 files, and connect assessments for students."
       >
         <div className="grid gap-4 md:grid-cols-2">
-          {state.courses.map((course) => (
+          {visibleCourses.map((course) => (
             <div
               key={course.id}
               className="rounded-[24px] border border-foreground/10 bg-white p-5 shadow-soft transition hover:border-primary/40 dark:border-white/8 dark:bg-[#13212a]"

@@ -155,6 +155,41 @@ class AssessmentController extends Controller
         ]);
     }
 
+    public function updateQuestion(Request $request, Assessment $assessment, \App\Models\AssessmentQuestion $question): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        abort_if($assessment->course?->tenant_id !== $user->tenant_id, 404, 'Assessment not found.');
+        abort_if($question->assessment_id !== $assessment->id, 404, 'Question does not belong to this assessment.');
+
+        $validated = $request->validate([
+            'prompt' => ['sometimes', 'string'],
+            'options' => ['sometimes', 'array'],
+            'answer' => ['sometimes', 'string'],
+        ]);
+
+        $question->update($validated);
+
+        return response()->json([
+            'message' => 'Question updated successfully.',
+            'data' => LmsSupport::serializeAssessmentQuestion($question),
+        ]);
+    }
+
+    public function deleteQuestion(Request $request, Assessment $assessment, \App\Models\AssessmentQuestion $question): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        abort_if($assessment->course?->tenant_id !== $user->tenant_id, 404, 'Assessment not found.');
+        abort_if($question->assessment_id !== $assessment->id, 404, 'Question does not belong to this assessment.');
+
+        $question->delete();
+
+        $assessment->decrement('question_count');
+
+        return response()->json([
+            'message' => 'Question deleted successfully.',
+        ]);
+    }
+
     public function submit(Request $request, Assessment $assessment): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['student']);

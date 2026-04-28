@@ -1,12 +1,12 @@
 "use client";
 
 import type { CourseModule, LiveClass } from "@/lib/mock-lms";
-import { Award, BookOpen, CalendarClock, CheckCircle2, CheckCircle, XCircle, FileText, Sparkles, Video, ClipboardCheck, PenSquare, Play, RefreshCw, MessageSquare } from "lucide-react";
+import { Award, BookOpen, CalendarClock, CheckCircle2, CheckCircle, XCircle, FileText, Sparkles, Video, ClipboardCheck, PenSquare, Play, RefreshCw, MessageSquare, Megaphone } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { YouTubePlayer } from "@/components/shared/youtube-player";
-import { fetchStudentLiveClassesFromBackend, fetchMySubmissionsFromBackend, getStoredToken } from "@/lib/api/lms-backend";
+import { fetchStudentLiveClassesFromBackend, fetchMySubmissionsFromBackend, getStoredToken, joinLiveClassOnBackend } from "@/lib/api/lms-backend";
 
 import {
   Badge,
@@ -544,7 +544,17 @@ export function StudentLiveClassesPanel() {
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         {link && (
-                          <PrimaryButton onClick={() => window.open(link, "_blank", "noopener,noreferrer")} disabled={liveClass.status === "cancelled"}>
+                          <PrimaryButton 
+                            onClick={async () => {
+                              try {
+                                await joinLiveClassOnBackend(liveClass.id);
+                              } catch (e) {
+                                console.error("Failed to record attendance", e);
+                              }
+                              window.open(link, "_blank", "noopener,noreferrer");
+                            }} 
+                            disabled={liveClass.status === "cancelled"}
+                          >
                             {isLive || joinable ? "Join Now" : liveClass.status === "cancelled" ? "Cancelled" : "Open Link"}
                           </PrimaryButton>
                         )}
@@ -849,5 +859,39 @@ export function StudentDashboardPanel() {
       </div>
       <StudentCoursesPanel />
     </div>
+  );
+}
+
+export function StudentAnnouncementsPanel() {
+  const { state } = useMockLms();
+  const studentNotices = state.notifications.filter((notification) => notification.audience === "Student" || notification.audience === "All");
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
+  const visibleStudentNotices = showAllAnnouncements ? studentNotices : studentNotices.slice(0, 5);
+
+  return (
+    <Section title="Announcements" subtitle="Stay updated with course announcements, institute notices, and assignment reminders.">
+      <div className="grid gap-4">
+        {visibleStudentNotices.length > 0 ? (
+          visibleStudentNotices.map((notice) => (
+            <div key={notice.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-5 dark:border-white/8 dark:bg-[#13212a] shadow-soft">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex gap-2">
+                  <Badge className="bg-primary/10 text-primary border-primary/20">{notice.type}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{new Date(notice.createdAt).toLocaleString()}</p>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-foreground/90">{notice.message}</p>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-[1.4rem] border border-dashed border-foreground/15 bg-background/60 p-8 text-center text-sm text-muted-foreground dark:border-white/10">
+             <Megaphone className="mx-auto mb-3 h-8 w-8 opacity-30" />
+             <p className="font-semibold text-foreground">No announcements yet.</p>
+             <p className="mt-1">Check back later for updates from your teachers.</p>
+          </div>
+        )}
+      </div>
+      {studentNotices.length > 5 ? <SeeMoreButton expanded={showAllAnnouncements} remaining={studentNotices.length - 5} onClick={() => setShowAllAnnouncements((current) => !current)} /> : null}
+    </Section>
   );
 }

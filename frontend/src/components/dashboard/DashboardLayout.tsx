@@ -154,6 +154,12 @@ const studentNav: NavSection[] = [
     ],
   },
   {
+    label: "Communication",
+    items: [
+      { href: "/student/announcements", label: "Announcements", icon: <Megaphone className="w-4 h-4" /> },
+    ],
+  },
+  {
     label: "Reports",
     items: [
       { href: "/student/certificates", label: "Certificates", icon: <Award className="w-4 h-4" /> },

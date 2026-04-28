@@ -18,12 +18,24 @@ use App\Http\Controllers\Api\TenantBrandingController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\VendorController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\SslCommerzPaymentController;
+use App\Http\Controllers\Api\ReportsController;
+use App\Http\Controllers\Api\UserManagementController;
+use App\Http\Controllers\Api\AdminCourseManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::get('/public/tenant/branding', [TenantBrandingController::class, 'lookup']);
     Route::get('/public/courses', [CourseController::class, 'publicIndex']);
+
+    // SSLCommerz Callback Routes
+    Route::post('/payments/ssl/success', [SslCommerzPaymentController::class, 'success']);
+    Route::post('/payments/ssl/fail', [SslCommerzPaymentController::class, 'fail']);
+    Route::post('/payments/ssl/cancel', [SslCommerzPaymentController::class, 'cancel']);
+    Route::post('/payments/ssl/ipn', [SslCommerzPaymentController::class, 'ipn']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
@@ -47,7 +59,13 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/courses/{course}', [CourseController::class, 'show']);
         Route::post('/courses/{course}/publish', [CourseController::class, 'publish']);
         Route::post('/courses/{course}/modules', [CourseController::class, 'storeModule']);
+        Route::put('/courses/{course}/modules/{module}', [CourseController::class, 'updateModule']);
+        Route::delete('/courses/{course}/modules/{module}', [CourseController::class, 'deleteModule']);
+        Route::post('/courses/{course}/modules/reorder', [CourseController::class, 'reorderModules']);
         Route::post('/courses/{course}/modules/{module}/lessons', [CourseController::class, 'storeLesson']);
+        Route::put('/courses/{course}/modules/{module}/lessons/{lesson}', [CourseController::class, 'updateLesson']);
+        Route::delete('/courses/{course}/modules/{module}/lessons/{lesson}', [CourseController::class, 'deleteLesson']);
+        Route::post('/courses/{course}/modules/{module}/lessons/reorder', [CourseController::class, 'reorderLessons']);
         Route::post('/courses/{course}/modules/{module}/lessons/{lesson}/content', [CourseController::class, 'uploadLessonContent']);
         Route::post('/courses/{course}/lessons/{lesson}/complete', [CourseController::class, 'completeLesson']);
 
@@ -55,6 +73,11 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/student/my-courses', [EnrollmentController::class, 'myCourses']);
         Route::get('/student/my-submissions', [EnrollmentController::class, 'mySubmissions']);
         Route::get('/student/live-classes', [LiveClassController::class, 'index']);
+
+        Route::get('/payments', [PaymentController::class, 'index']);
+        Route::post('/payments', [PaymentController::class, 'store']);
+        Route::get('/payments/{payment}', [PaymentController::class, 'show']);
+        Route::post('/payments/ssl/initiate', [SslCommerzPaymentController::class, 'initiate']);
 
         Route::post('/enrollments', [EnrollmentController::class, 'store']);
         Route::patch('/enrollments/{enrollment}', [EnrollmentController::class, 'update']);
@@ -65,6 +88,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments/generate', [AssessmentController::class, 'generate']);
         Route::post('/assessments/{assessment}/publish', [AssessmentController::class, 'publish']);
+        Route::put('/assessments/{assessment}/questions/{question}', [AssessmentController::class, 'updateQuestion']);
+        Route::delete('/assessments/{assessment}/questions/{question}', [AssessmentController::class, 'deleteQuestion']);
         Route::post('/assessments/{assessment}/submit', [AssessmentController::class, 'submit']);
         Route::post('/teacher/notes/upload', [AssessmentController::class, 'uploadNotes']);
         Route::get('/teacher/question-bank/fallback', [AssessmentController::class, 'fallbackBanks']);
@@ -83,6 +108,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/live-classes/{liveClass}/attendance', [AttendanceController::class, 'store']);
 
         Route::get('/reports/compliance', [ComplianceController::class, 'index']);
+    Route::get('/reports/revenue', [ReportsController::class, 'revenue']);
         Route::get('/reports/compliance/export/csv', [ComplianceController::class, 'exportCsv']);
         Route::get('/reports/compliance/export/pdf', [ComplianceController::class, 'exportPdf']);
         Route::post('/reports/compliance/reminders', [ComplianceController::class, 'sendReminders']);
@@ -99,7 +125,19 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
 
         Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/announcements', [NotificationController::class, 'store']);
         Route::get('/audit-events', [AuditController::class, 'index']);
+        // Admin user management
+        Route::post('/users', [UserManagementController::class, 'store']);
+        Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
+        Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
+        // Admin course management
+        Route::get('/admin/courses', [AdminCourseManagementController::class, 'index']);
+        Route::get('/admin/teachers', [AdminCourseManagementController::class, 'teachers']);
+        Route::get('/admin/courses/{course}/teachers', [AdminCourseManagementController::class, 'courseTeachers']);
+        Route::post('/admin/courses/{course}/teachers', [AdminCourseManagementController::class, 'assignTeachers']);
+        Route::delete('/admin/courses/{course}/teachers/{teacher}', [AdminCourseManagementController::class, 'removeTeacher']);
+        Route::get('/admin/courses/{course}/students', [AdminCourseManagementController::class, 'courseStudents']);
+        Route::delete('/admin/courses/{course}/students/{student}', [AdminCourseManagementController::class, 'removeStudent']);
     });
 });
-

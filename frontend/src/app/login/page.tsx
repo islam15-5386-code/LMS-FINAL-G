@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
@@ -21,6 +21,22 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [branding, setBranding] = useState<any>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/tenant/current');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (mounted) setBranding(json.data ?? json);
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -108,14 +124,15 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <div className="w-10 h-10 rounded-[0.9rem] flex items-center justify-center font-serif text-base text-white" style={{ background: "linear-gradient(135deg, #1A1A2E, #E8A020)" }}>
-              SL
+            <div className="w-10 h-10 rounded-[0.9rem] flex items-center justify-center font-serif text-base text-white"
+                 style={{ background: branding?.primaryColor ?? "linear-gradient(135deg, #1A1A2E, #E8A020)", backgroundColor: branding?.primaryColor ?? undefined }}>
+              {branding?.logoText ?? 'SL'}
             </div>
-            <p className="font-serif text-xl font-semibold">Smart LMS</p>
+            <p className="font-serif text-xl font-semibold">{branding?.tenantName ?? 'Smart LMS'}</p>
           </div>
 
-          <h2 className="font-serif text-3xl text-foreground">Welcome back</h2>
-          <p className="text-muted-foreground mt-2 text-sm">Sign in to your account to continue.</p>
+          <h2 className="font-serif text-3xl text-foreground">{branding?.siteTitle ?? 'Welcome back'}</h2>
+          <p className="text-muted-foreground mt-2 text-sm">Sign in to your {branding?.tenantName ?? 'account'} to continue.</p>
 
           {/* Demo account quick-fill */}
           <div className="mt-6 p-4 rounded-2xl border border-dashed border-border/80 bg-muted/20">

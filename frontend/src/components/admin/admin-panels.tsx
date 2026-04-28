@@ -10,7 +10,16 @@ import {
   planMatrix,
   seatUtilizationPercent
 } from "@/lib/mock-lms";
-import { downloadAuthenticatedFile } from "@/lib/api/lms-backend";
+import { 
+  downloadAuthenticatedFile,
+  fetchAdminCoursesFromBackend,
+  fetchAdminTeachersFromBackend,
+  fetchCourseTeachersFromBackend,
+  assignTeachersToCourseOnBackend,
+  removeTeacherFromCourseOnBackend,
+  fetchCourseStudentsFromBackend,
+  removeStudentFromCourseOnBackend
+} from "@/lib/api/lms-backend";
 import { useMockLms } from "@/providers/mock-lms-provider";
 
 import {
@@ -799,9 +808,201 @@ export function UserDirectoryPanel({ roleFilter }: { roleFilter?: "teacher" | "s
             </div>
           </div>
         ))}
-        {shouldCollapse ? <SeeMoreButton expanded={showAll} remaining={users.length - initialVisibleCount} onClick={() => setShowAll((current) => !current)} /> : null}
+        {shouldCollapse ? <SeeMoreButton expanded={showAll} remaining={users.length - initialVisibleCount} onClick={() => setShowAll(!showAll)} /> : null}
       </div>
     </Section>
+  );
+}
+
+export function AdminCoursePanel() {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+
+  const loadCourses = async () => {
+    setLoading(true);
+    try {
+      const result = await fetchAdminCoursesFromBackend();
+      setCourses(result.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadCourses();
+  }, []);
+
+  if (selectedCourse) {
+    return (
+      <AdminCourseDetails course={selectedCourse} onBack={() => setSelectedCourse(null)} />
+    );
+  }
+
+  return (
+    <Section title="Course management" subtitle="Assign teachers, manage student enrollments, and monitor course status across the tenant.">
+      <div className="grid gap-4">
+        {loading ? (
+          <p>Loading courses...</p>
+        ) : courses.length > 0 ? (
+          <div className="overflow-auto rounded-[1.4rem] border border-foreground/10 bg-white dark:border-white/8 dark:bg-[#13212a]">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-foreground/10 bg-background/70 text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Title</th>
+                  <th className="px-4 py-3 font-medium">Teachers</th>
+                  <th className="px-4 py-3 font-medium">Students</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courses.map((course) => (
+                  <tr key={course.id} className="border-b border-foreground/8">
+                    <td className="px-4 py-3 font-medium">{course.title}</td>
+                    <td className="px-4 py-3">{course.teacher_count || 0}</td>
+                    <td className="px-4 py-3">{course.enrollment_count || 0}</td>
+                    <td className="px-4 py-3">
+                       <Badge className={course.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
+                         {course.status}
+                       </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <SecondaryButton onClick={() => setSelectedCourse(course)}>Manage</SecondaryButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-muted-foreground">No courses found.</p>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+function AdminCourseDetails({ course, onBack }: { course: any; onBack: () => void }) {
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [assignedTeachers, setAssignedTeachers] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+
+  const loadDetails = async () => {
+    setLoading(true);
+    try {
+      const [allTeachersRes, assignedRes, studentsRes] = await Promise.all([
+        fetchAdminTeachersFromBackend(),
+        fetchCourseTeachersFromBackend(course.id),
+        fetchCourseStudentsFromBackend(course.id)
+      ]);
+      setTeachers(allTeachersRes.data);
+      setAssignedTeachers(assignedRes.data);
+      setStudents(studentsRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadDetails();
+  }, [course.id]);
+
+  const handleAssignTeacher = async () => {
+    if (!selectedTeacherId) return;
+    setIsAssigning(true);
+    try {
+      await assignTeachersToCourseOnBackend(course.id, [selectedTeacherId]);
+      await loadDetails();
+      setSelectedTeacherId("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRemoveTeacher = async (teacherId: string) => {
+    if (!confirm("Are you sure you want to remove this teacher from the course?")) return;
+    try {
+      await removeTeacherFromCourseOnBackend(course.id, teacherId);
+      await loadDetails();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemoveStudent = async (studentId: string) => {
+    if (!confirm("Are you sure you want to remove this student's enrollment? This will revoke their access to course materials.")) return;
+    try {
+      await removeStudentFromCourseOnBackend(course.id, studentId);
+      await loadDetails();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="grid gap-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+           <SecondaryButton onClick={onBack}>← Back</SecondaryButton>
+           <h2 className="font-serif text-3xl">{course.title}</h2>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Section title="Teachers" subtitle="Manage assigned teachers.">
+          <div className="grid gap-4">
+             <div className="flex gap-2">
+                <div className="flex-1">
+                   <SelectInput value={selectedTeacherId} onChange={(e) => setSelectedTeacherId(e.target.value)}>
+                      <option value="">Select teacher...</option>
+                      {teachers.filter(t => !assignedTeachers.some(at => at.id === t.id)).map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                   </SelectInput>
+                </div>
+                <PrimaryButton onClick={handleAssignTeacher} disabled={isAssigning || !selectedTeacherId}>
+                  {isAssigning ? "..." : "Assign"}
+                </PrimaryButton>
+             </div>
+
+             <div className="grid gap-3">
+                {assignedTeachers.map(teacher => (
+                  <div key={teacher.id} className="flex items-center justify-between p-3 rounded-xl border border-foreground/10 bg-white dark:bg-white/5">
+                    <p className="text-sm font-medium">{teacher.name}</p>
+                    <button onClick={() => handleRemoveTeacher(teacher.id)} className="text-xs text-red-500">Remove</button>
+                  </div>
+                ))}
+             </div>
+          </div>
+        </Section>
+
+        <Section title="Students" subtitle="Manage enrollments.">
+           <div className="grid gap-3">
+              {students.map(enrollment => (
+                <div key={enrollment.id} className="flex items-center justify-between p-3 rounded-xl border border-foreground/10 bg-white dark:bg-white/5">
+                   <div>
+                      <p className="text-sm font-medium">{enrollment.student_name}</p>
+                      <p className="text-xs text-muted-foreground">{enrollment.status}</p>
+                   </div>
+                   {enrollment.status === 'active' && (
+                     <button onClick={() => handleRemoveStudent(enrollment.student_id)} className="text-xs text-red-500">Remove</button>
+                   )}
+                </div>
+              ))}
+           </div>
+        </Section>
+      </div>
+    </div>
   );
 }
 
@@ -939,3 +1140,113 @@ export function LiveClassMonitorPanel() {
     </Section>
   );
 }
+
+export function PaymentsPanel() {
+  const { state } = useMockLms();
+  const [filter, setFilter] = useState("all");
+  const [showAllPayments, setShowAllPayments] = useState(false);
+
+  const filteredPayments = state.payments.filter((payment) => {
+    if (filter === "all") return true;
+    return payment.status === filter;
+  });
+
+  const visiblePayments = showAllPayments ? filteredPayments : filteredPayments.slice(0, 10);
+
+  const totalRevenue = state.payments
+    .filter(p => p.status === "paid")
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  return (
+    <Section title="Payment & Revenue Tracking" subtitle="Monitor course sales, transaction IDs, and revenue distribution across your tenant.">
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <StatCard 
+          label="Total Revenue" 
+          value={`$${totalRevenue.toFixed(2)}`} 
+          icon={<CreditCard className="h-5 w-5" />} 
+          className="border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5"
+        />
+        <StatCard 
+          label="Total Transactions" 
+          value={String(state.payments.length)} 
+          icon={<ReceiptText className="h-5 w-5" />} 
+        />
+        <div className="flex items-center justify-end gap-3 self-center">
+          <SelectInput value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="all">All Payments</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+          </SelectInput>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-foreground/10 bg-white dark:border-white/8 dark:bg-[#13212a]">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-foreground/10 bg-muted/50 text-muted-foreground">
+            <tr>
+              <th className="px-6 py-4 font-semibold text-foreground">Date</th>
+              <th className="px-6 py-4 font-semibold text-foreground">Student</th>
+              <th className="px-6 py-4 font-semibold text-foreground">Course</th>
+              <th className="px-6 py-4 font-semibold text-foreground">Transaction ID</th>
+              <th className="px-6 py-4 font-semibold text-foreground">Amount</th>
+              <th className="px-6 py-4 font-semibold text-foreground">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-foreground/5">
+            {visiblePayments.length > 0 ? (
+              visiblePayments.map((payment) => {
+                const user = state.users.find(u => u.id === payment.userId);
+                const course = state.courses.find(c => c.id === payment.courseId);
+                return (
+                  <tr key={payment.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">
+                      {new Date(payment.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-foreground">{user?.name || "Unknown Student"}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {course?.title || "Unknown Course"}
+                    </td>
+                    <td className="px-6 py-4 font-mono text-xs uppercase text-muted-foreground">
+                      {payment.transactionId}
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-foreground">
+                      ${payment.amount.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge className={
+                        payment.status === "paid" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                        payment.status === "pending" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                        "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                      }>
+                        {payment.status}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground italic">
+                  No payment records found for the selected filter.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {filteredPayments.length > 10 && (
+        <SeeMoreButton 
+          expanded={showAllPayments} 
+          remaining={filteredPayments.length - 10} 
+          onClick={() => setShowAllPayments(!showAllPayments)} 
+        />
+      )}
+    </Section>
+  );
+}
+

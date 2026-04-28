@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class Course extends Model
 {
+    use BelongsToTenant;
     protected $fillable = [
         'tenant_id',
         'teacher_id',
@@ -52,6 +54,12 @@ class Course extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function teachers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_teacher', 'course_id', 'teacher_id')
+            ->withTimestamps();
     }
 
     public function assessments(): HasMany

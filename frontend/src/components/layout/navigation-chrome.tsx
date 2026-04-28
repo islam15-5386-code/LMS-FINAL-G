@@ -67,7 +67,9 @@ const contextualGroups: Array<{
       { href: "/admin/ai-tools", label: "AI Tools", icon: <Sparkles className="h-4 w-4" /> },
       { href: "/admin/live-classes", label: "Live", icon: <PlayCircle className="h-4 w-4" /> },
       { href: "/admin/certificates", label: "Certificates", icon: <ShieldCheck className="h-4 w-4" /> },
-      { href: "/admin/reports/compliance", label: "Reports", icon: <ChartNoAxesCombined className="h-4 w-4" /> },
+  { href: "/admin/reports/compliance", label: "Reports", icon: <ChartNoAxesCombined className="h-4 w-4" /> },
+  { href: "/admin/reports/revenue", label: "Revenue", icon: <ChartNoAxesCombined className="h-4 w-4" /> },
+      { href: "/admin/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" /> },
       { href: "/admin/billing", label: "Billing", icon: <CreditCard className="h-4 w-4" /> },
       { href: "/admin/audit-logs", label: "Audit", icon: <ShieldCheck className="h-4 w-4" /> }
     ]

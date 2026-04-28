@@ -31,6 +31,7 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
   const searchParams = useSearchParams();
   const { state, addModule, addLesson, uploadLessonContent, publishCourse, setCourseAssessmentGate } = useMockLms();
   const course = useMemo(() => state.courses.find((item) => item.id === courseId), [state.courses, courseId]);
+  const { currentUser } = useMockLms();
   const [moduleTitle, setModuleTitle] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
@@ -64,6 +65,19 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
         <PageHeader title="Course not found" subtitle="The requested course could not be found." />
         <div className="card">
           <p className="mb-4 text-sm text-muted-foreground">Return to your course list to manage a valid course.</p>
+          <Link href="/teacher/courses" className="btn-secondary">Back to courses</Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Protect course access: only the assigned teacher (or admin) can manage the course
+  if (currentUser?.role === 'teacher' && course.teacherId !== currentUser.id) {
+    return (
+      <DashboardLayout role="teacher">
+        <PageHeader title="Access denied" subtitle="You are not assigned to manage this course." />
+        <div className="card">
+          <p className="mb-4 text-sm text-muted-foreground">Contact your administrator to be assigned as the instructor for this course.</p>
           <Link href="/teacher/courses" className="btn-secondary">Back to courses</Link>
         </div>
       </DashboardLayout>

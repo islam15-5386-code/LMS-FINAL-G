@@ -34,7 +34,8 @@ class AuthController extends Controller
             'address' => ['nullable', 'string'],
         ]);
 
-        $tenant = $this->resolveTenant($validated);
+    // Prefer tenant resolved from middleware (subdomain). Fallback to payload resolver for compatibility.
+    $tenant = $request->attributes->get('tenant') ?? $this->resolveTenant($validated);
 
         $user = User::query()->create([
             'tenant_id' => $tenant->id,
@@ -96,15 +97,27 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+
+        // Enforce tenant resolution from request attributes
+        $tenant = $request->attributes->get('tenant');
+        if ($tenant === null) {
+            return response()->json(['message' => 'Institute not found.'], 404);
+        }
+
         $user = User::query()
             ->with('tenant')
             ->where('email', $validated['email'])
+            ->where('tenant_id', $tenant->id)
             ->first();
 
         if ($user === null || ! Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'message' => 'Invalid credentials provided.',
             ], 422);
+        }
+
+        if (! $user->is_active) {
+            return response()->json(['message' => 'User is blocked.'], 403);
         }
 
         $token = $user->createToken('api-token')->plainTextToken;

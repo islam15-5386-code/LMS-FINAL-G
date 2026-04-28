@@ -13,6 +13,7 @@ import {
   Check,
   CheckCircle2,
   Clock3,
+  CreditCard,
   Heart,
   Lock,
   MoonStar,
@@ -1058,12 +1059,14 @@ export function MarketingPageExperience({ slug }: { slug: string }) {
 
 export function CatalogCourseExperience({ slug }: { slug: string }) {
   const router = useRouter();
-  const { state, currentUser, isAuthenticated, enrollInCourse, addToWishlist, removeFromWishlist } = useMockLms();
+  const { state, currentUser, isAuthenticated, enrollInCourse, addToWishlist, removeFromWishlist, createPayment, initiateSslCommerz } = useMockLms();
   const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
   const [catalogCourse, setCatalogCourse] = useState<(typeof state.courses)[number] | null>(null);
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [courseLoadError, setCourseLoadError] = useState("");
   const [enrolling, setEnrolling] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [transactionId, setTransactionId] = useState("TXN-" + Math.random().toString(36).substring(2, 8).toUpperCase());
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [enrollMessage, setEnrollMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const resolvedSlug = catalogSlugMap[slug] ?? slug;
@@ -1370,6 +1373,11 @@ export function CatalogCourseExperience({ slug }: { slug: string }) {
                     return;
                   }
 
+                  if (course.price > 0) {
+                    setShowPaymentModal(true);
+                    return;
+                  }
+
                   try {
                     setEnrolling(true);
                     setEnrollMessage(null);
@@ -1502,6 +1510,90 @@ export function CatalogCourseExperience({ slug }: { slug: string }) {
           ))}
         </div>
       </Section>
+
+      {showPaymentModal && course && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !enrolling && setShowPaymentModal(false)} />
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#13212a]">
+            <div className="border-b border-foreground/10 px-6 py-4">
+              <h3 className="font-semibold text-foreground">Course Payment</h3>
+            </div>
+            <div className="p-6">
+              <p className="mb-4 text-sm text-muted-foreground">
+                You are purchasing <strong>{course.title}</strong> for <strong>${course.price}</strong>.
+                Choose your preferred payment method.
+              </p>
+              
+              <div className="mb-6 grid gap-3">
+                <button
+                  type="button"
+                  disabled={enrolling}
+                  onClick={async () => {
+                    try {
+                      setEnrolling(true);
+                      setEnrollMessage(null);
+                      const result = await initiateSslCommerz(course.id);
+                      if (result.gateway_url) {
+                        window.location.href = result.gateway_url;
+                      }
+                    } catch (error) {
+                      setEnrollMessage({ type: "error", text: error instanceof Error ? error.message : "SSLCommerz failed." });
+                      setEnrolling(false);
+                    }
+                  }}
+                  className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 transition hover:bg-blue-500/10 dark:bg-blue-500/10 dark:hover:bg-blue-500/20"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-blue-500 text-white font-bold text-xs">SSL</div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-foreground">SSLCommerz</p>
+                      <p className="text-xs text-muted-foreground">Pay via Cards, Mobile Banking</p>
+                    </div>
+                  </div>
+                  <CreditCard className="h-5 w-5 text-blue-500" />
+                </button>
+              </div>
+
+              <div className="relative mb-6 text-center">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-foreground/10" /></div>
+                <span className="relative bg-white px-2 text-[10px] uppercase tracking-widest text-muted-foreground dark:bg-[#13212a]">Or manual / mock</span>
+              </div>
+
+              <TextInput
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="Mock Transaction ID"
+                disabled={enrolling}
+              />
+              {enrollMessage && enrollMessage.type === "error" && (
+                <p className="mt-3 text-sm text-destructive">{enrollMessage.text}</p>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-foreground/10 bg-muted/30 px-6 py-4">
+              <SecondaryButton disabled={enrolling} onClick={() => setShowPaymentModal(false)}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton
+                disabled={enrolling || !transactionId}
+                onClick={async () => {
+                  try {
+                    setEnrolling(true);
+                    setEnrollMessage(null);
+                    const result = await createPayment(course.id, course.price, transactionId);
+                    setShowPaymentModal(false);
+                    router.push(`/student/invoice/${result.id}`);
+                  } catch (error) {
+                    setEnrollMessage({ type: "error", text: error instanceof Error ? error.message : "Payment failed." });
+                    setEnrolling(false);
+                  }
+                }}
+              >
+                {enrolling ? "Processing..." : `Mock Pay $${course.price}`}
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeVideo && (
         <YouTubePlayer

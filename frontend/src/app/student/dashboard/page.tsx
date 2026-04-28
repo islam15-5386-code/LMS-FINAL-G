@@ -145,9 +145,14 @@ export default function StudentDashboardPage() {
         <div className="grid gap-6 content-start">
           {/* Notifications */}
           <div className="card">
-            <h2 className="font-serif text-xl mb-4">Notifications</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-serif text-xl">Announcements</h2>
+              <Link href="/student/announcements" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                View all <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
             {state.notifications.filter((n) => n.audience === "Student" || n.audience === "All").length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No new notifications.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No new announcements.</p>
             ) : (
               <div className="grid gap-3">
                 {state.notifications.filter((n) => n.audience === "Student" || n.audience === "All").slice(0, 4).map((n) => (

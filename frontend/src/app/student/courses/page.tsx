@@ -51,11 +51,33 @@ export default function StudentCoursesPage() {
 
   const studentName = currentUser?.name ?? state.users.find((u) => u.role === "student")?.name ?? "Student";
 
+  function canViewCourseContent(courseId: string) {
+    // Admins always can
+    if (currentUser?.role === "admin") return true;
+
+    // Teachers assigned to the course can view
+    const course = state.courses.find((c) => c.id === courseId);
+    if (currentUser?.role === "teacher" && course?.teacherId === currentUser.id) return true;
+
+    // Students must be enrolled or have a paid payment for this course
+    if (currentUser?.role === "student") {
+      const enrolled = state.enrollments.some((e) => e.courseId === courseId && (e.studentId === currentUser.id || e.studentName === currentUser.name) && e.status !== "cancelled");
+      if (enrolled) return true;
+
+      const paid = state.payments.some((p) => p.courseId === courseId && p.userId === currentUser.id && p.status === "paid");
+      return Boolean(paid);
+    }
+
+    return false;
+  }
+
   const fetchCourses = useCallback(async () => {
     const token = getStoredToken();
     if (!token) {
-      setBackendCourses(state.courses.filter((c) => c.status === "published"));
-      setBackendAssessments(state.assessments);
+      // If the user is not authenticated, do not show published courses here.
+      // Students must be signed in to view their enrolled courses.
+      setBackendCourses([]);
+      setBackendAssessments([]);
       setLoadingCourses(false);
       return;
     }
@@ -67,9 +89,19 @@ export default function StudentCoursesPage() {
         setBackendCourses(result.courses);
         setBackendAssessments(result.assessments);
       } catch (err) {
-        // Only fall back to local published courses on actual network/backend error
-        setBackendCourses(state.courses.filter((c) => c.status === "published"));
-        setBackendAssessments(state.assessments);
+        // Fall back to the local enrolled courses (if any) rather than showing the whole catalog.
+        const actorId = currentUser?.id;
+        if (actorId) {
+          const enrolledCourseIds = state.enrollments
+            .filter((e) => e.studentId === actorId && e.status !== 'cancelled')
+            .map((e) => e.courseId);
+
+          setBackendCourses(state.courses.filter((c) => enrolledCourseIds.includes(c.id)));
+          setBackendAssessments(state.assessments);
+        } else {
+          setBackendCourses([]);
+          setBackendAssessments([]);
+        }
         setLoadError(err instanceof Error ? err.message : "Could not reach backend. Showing local data.");
       } finally {
         setLoadingCourses(false);
@@ -372,23 +404,45 @@ export default function StudentCoursesPage() {
                             <div key={lesson.id} className={`rounded-xl border transition-all ${completed ? "border-success/30 bg-success/5" : "border-border bg-card/50 hover:border-primary/30"}`}>
                               <div className="flex items-center gap-3 p-3">
                                 {hasVideo && thumbnail ? (
-                                  <button
-                                    type="button"
-                                    disabled={gateLocksModule}
-                                    onClick={() => setActiveVideo({ url: lesson.contentUrl!, title: lesson.title })}
-                                    className="group relative h-14 w-24 shrink-0 overflow-hidden rounded-lg border border-border/50 disabled:cursor-not-allowed"
-                                  >
-                                    <img src={thumbnail} alt="" className="h-full w-full object-cover" />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors">
-                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600">
-                                        <Play className="ml-px h-3 w-3 fill-white text-white" />
+                                  (() => {
+                                    const allowed = canViewCourseContent(activeCourse.id) && !gateLocksModule;
+                                    return (
+                                      <div className="relative">
+                                        <button
+                                          type="button"
+                                          disabled={!allowed}
+                                          onClick={() => allowed && setActiveVideo({ url: lesson.contentUrl!, title: lesson.title })}
+                                          className={`group relative h-14 w-24 shrink-0 overflow-hidden rounded-lg border border-border/50 ${!allowed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        >
+                                          <img src={thumbnail} alt="" className="h-full w-full object-cover" />
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors">
+                                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600">
+                                              <Play className="ml-px h-3 w-3 fill-white text-white" />
+                                            </div>
+                                          </div>
+                                        </button>
+                                        {!allowed ? (
+                                          <div className="absolute inset-0 flex items-end justify-center p-1">
+                                            <a href="/catalog" className="rounded-md bg-primary px-2 py-1 text-xs font-semibold text-white">Unlock</a>
+                                          </div>
+                                        ) : null}
                                       </div>
-                                    </div>
-                                  </button>
+                                    );
+                                  })()
                                 ) : (
-                                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${completed ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
-                                    {completed ? <CheckCircle className="h-4 w-4" /> : getLessonIcon(lesson.type, hasVideo)}
-                                  </div>
+                                  (() => {
+                                    const allowed = canViewCourseContent(activeCourse.id) && !gateLocksModule;
+                                    return (
+                                      <div className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${completed ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                                        {completed ? <CheckCircle className="h-4 w-4" /> : getLessonIcon(lesson.type, hasVideo)}
+                                        {!allowed ? (
+                                          <div className="absolute inset-0 flex items-end justify-center p-1">
+                                            <a href="/catalog" className="rounded-md bg-primary px-2 py-1 text-xs font-semibold text-white">Unlock</a>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })()
                                 )}
 
                                 <div className="min-w-0 flex-1">

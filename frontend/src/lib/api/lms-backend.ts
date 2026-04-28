@@ -384,12 +384,21 @@ async function apiFetch(path: string, init: RequestInit = {}, retry = true) {
   let response: Response;
 
   try {
+    const extraHeaders: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      const host = window.location.host || '';
+      if ((host.includes('localhost') || host.includes('127.0.0.1')) && host.split('.')[0]) {
+        extraHeaders['X-Tenant'] = host.split('.')[0];
+      }
+    }
+
     response = await fetch(apiUrl(path), {
       ...init,
       headers: {
         Accept: "application/json",
         ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(init.headers ?? {}),
+        ...extraHeaders,
         Authorization: `Bearer ${token}`
       }
     });
@@ -599,6 +608,21 @@ export async function publishTeacherAssessment(assessmentId: string) {
   return normalizeAssessment(data.data as unknown as Record<string, unknown>);
 }
 
+export async function updateAssessmentQuestionOnBackend(assessmentId: string, questionId: string, payload: { prompt?: string; options?: string[]; answer?: string }) {
+  const response = await apiFetch(`/api/v1/assessments/${assessmentId}/questions/${questionId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function deleteAssessmentQuestionOnBackend(assessmentId: string, questionId: string) {
+  const response = await apiFetch(`/api/v1/assessments/${assessmentId}/questions/${questionId}`, {
+    method: "DELETE"
+  });
+  return unwrapResponse<{ message: string }>(response);
+}
+
 export async function updateTenantBrandingOnBackend(branding: TenantBranding) {
   const response = await apiFetch("/api/v1/tenant/branding", {
     method: "PUT",
@@ -734,6 +758,29 @@ export async function addCourseModuleOnBackend(courseId: string, title: string, 
   return unwrapResponse<{ data: unknown }>(response);
 }
 
+export async function updateCourseModuleOnBackend(courseId: string, moduleId: string, title: string, dripDays = 0) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/modules/${moduleId}`, {
+    method: "PUT",
+    body: JSON.stringify({ title, drip_days: dripDays })
+  });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function deleteCourseModuleOnBackend(courseId: string, moduleId: string) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/modules/${moduleId}`, {
+    method: "DELETE"
+  });
+  return unwrapResponse<{ message: string }>(response);
+}
+
+export async function reorderCourseModulesOnBackend(courseId: string, moduleIds: string[]) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/modules/reorder`, {
+    method: "POST",
+    body: JSON.stringify({ module_ids: moduleIds })
+  });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
 export async function addCourseLessonOnBackend(
   courseId: string,
   moduleId: string,
@@ -756,6 +803,46 @@ export async function addCourseLessonOnBackend(
 
   const data = await unwrapResponse<{ data: unknown }>(response);
   return normalizeLesson(data.data as Record<string, unknown>);
+}
+
+export async function updateCourseLessonOnBackend(
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  payload: {
+    title: string;
+    type: "video" | "document" | "quiz" | "assignment" | "live";
+    durationMinutes: number;
+    releaseAt?: string;
+  }
+) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      title: payload.title,
+      type: payload.type,
+      duration_minutes: payload.durationMinutes,
+      release_at: payload.releaseAt
+    })
+  });
+
+  const data = await unwrapResponse<{ data: unknown }>(response);
+  return normalizeLesson(data.data as Record<string, unknown>);
+}
+
+export async function deleteCourseLessonOnBackend(courseId: string, moduleId: string, lessonId: string) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, {
+    method: "DELETE"
+  });
+  return unwrapResponse<{ message: string }>(response);
+}
+
+export async function reorderCourseLessonsOnBackend(courseId: string, moduleId: string, lessonIds: string[]) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons/reorder`, {
+    method: "POST",
+    body: JSON.stringify({ lesson_ids: lessonIds })
+  });
+  return unwrapResponse<{ data: unknown }>(response);
 }
 
 export async function uploadLessonContentOnBackend(
@@ -860,6 +947,14 @@ export async function updateLiveClassStatusOnBackend(
   return unwrapResponse<{ data: unknown }>(response);
 }
 
+export async function joinLiveClassOnBackend(liveClassId: string) {
+  const response = await apiFetch(`/api/v1/live-classes/${liveClassId}/join`, {
+    method: "POST"
+  });
+
+  return unwrapResponse<{ data: unknown; meeting_url: string }>(response);
+}
+
 export async function submitAssessmentOnBackend(assessmentId: string, answerText: string) {
   const response = await apiFetch(`/api/v1/assessments/${assessmentId}/submit`, {
     method: "POST",
@@ -919,6 +1014,37 @@ export async function sendComplianceRemindersOnBackend(recordIds?: string[]) {
   return unwrapResponse<{ data: unknown }>(response);
 }
 
+export async function initiateSslCommerzPayment(courseId: string) {
+  const response = await apiFetch("/api/v1/payments/ssl/initiate", {
+    method: "POST",
+    body: JSON.stringify({ course_id: courseId })
+  });
+  return unwrapResponse<{ gateway_url: string }>(response);
+}
+
+export async function createPaymentOnBackend(courseId: string, amount: number, transactionId: string) {
+  const response = await apiFetch("/api/v1/payments", {
+    method: "POST",
+    body: JSON.stringify({
+      course_id: Number(courseId),
+      amount,
+      transaction_id: transactionId
+    })
+  });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function fetchPaymentsOnBackend(status?: string) {
+  const query = status && status !== "all" ? `?status=${status}` : "";
+  const response = await apiFetch(`/api/v1/payments${query}`, { method: "GET" });
+  return unwrapResponse<{ data: unknown[] }>(response);
+}
+
+export async function fetchPaymentInvoiceOnBackend(paymentId: string) {
+  const response = await apiFetch(`/api/v1/payments/${paymentId}`, { method: "GET" });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
 export async function downloadAuthenticatedFile(path: string, fallbackFilename: string) {
   const response = await apiFetch(path, {
     method: "GET"
@@ -940,4 +1066,50 @@ export async function downloadAuthenticatedFile(path: string, fallbackFilename: 
   anchor.download = filename;
   anchor.click();
   window.URL.revokeObjectURL(url);
+}
+
+export async function createAnnouncementOnBackend(payload: { message: string; audience: string; type: string }) {
+  const response = await apiFetch("/api/v1/announcements", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function fetchAdminCoursesFromBackend() {
+  const response = await apiFetch("/api/v1/admin/courses", { method: "GET" });
+  return unwrapResponse<{ data: any[]; meta: any }>(response);
+}
+
+export async function fetchAdminTeachersFromBackend() {
+  const response = await apiFetch("/api/v1/admin/teachers", { method: "GET" });
+  return unwrapResponse<{ data: any[] }>(response);
+}
+
+export async function fetchCourseTeachersFromBackend(courseId: string) {
+  const response = await apiFetch(`/api/v1/admin/courses/${courseId}/teachers`, { method: "GET" });
+  return unwrapResponse<{ data: any[] }>(response);
+}
+
+export async function assignTeachersToCourseOnBackend(courseId: string, teacherIds: (string | number)[]) {
+  const response = await apiFetch(`/api/v1/admin/courses/${courseId}/teachers`, {
+    method: "POST",
+    body: JSON.stringify({ teacher_ids: teacherIds.map(id => Number(id)) })
+  });
+  return unwrapResponse<{ message: string }>(response);
+}
+
+export async function removeTeacherFromCourseOnBackend(courseId: string, teacherId: string) {
+  const response = await apiFetch(`/api/v1/admin/courses/${courseId}/teachers/${teacherId}`, { method: "DELETE" });
+  return unwrapResponse<{ message: string }>(response);
+}
+
+export async function fetchCourseStudentsFromBackend(courseId: string) {
+  const response = await apiFetch(`/api/v1/admin/courses/${courseId}/students`, { method: "GET" });
+  return unwrapResponse<{ data: any[] }>(response);
+}
+
+export async function removeStudentFromCourseOnBackend(courseId: string, studentId: string) {
+  const response = await apiFetch(`/api/v1/admin/courses/${courseId}/students/${studentId}`, { method: "DELETE" });
+  return unwrapResponse<{ message: string }>(response);
 }

@@ -257,6 +257,21 @@ export type Invoice = {
   paymentStatus: string;
 };
 
+export type Payment = {
+  id: string;
+  tenantId?: string;
+  userId: string;
+  courseId: string;
+  amount: number;
+  dueAmount: number;
+  status: string;
+  transactionId?: string;
+  paidAt?: string;
+  createdAt: string;
+  user?: { name: string; email: string };
+  course?: { title: string };
+};
+
 export type VendorSummary = {
   id: string;
   vendorId: string;
@@ -288,6 +303,7 @@ export type MockLmsState = {
   auditEvents: AuditEvent[];
   complianceRecords: ComplianceRecord[];
   invoices: Invoice[];
+  payments: Payment[];
   billing: BillingState;
 };
 
@@ -773,6 +789,28 @@ export const seedState: MockLmsState = {
     }
   ],
   invoices: [],
+  payments: [
+    {
+      id: "pay-1",
+      userId: "user-student-1",
+      courseId: "course-compliance",
+      amount: 299,
+      dueAmount: 0,
+      status: "paid",
+      transactionId: "TXN-A1B2C3D4",
+      createdAt: isoDate(-5, 10)
+    },
+    {
+      id: "pay-2",
+      userId: "user-student-2",
+      courseId: "course-ai",
+      amount: 249,
+      dueAmount: 0,
+      status: "paid",
+      transactionId: "TXN-E5F6G7H8",
+      createdAt: isoDate(-3, 14)
+    }
+  ],
   billing: {
     plan: "Growth",
     activeStudents: 412,

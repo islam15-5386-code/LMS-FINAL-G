@@ -72,6 +72,71 @@ class LmsSupport
 
     public static function generateAiQuestions(string $sourceText, string $type, int $count): array
     {
+        $safeCount = max(1, min(50, $count));
+        $apiKey = env('OPENAI_API_KEY');
+
+        if (!empty($apiKey)) {
+            $normalizedText = self::normalizeQuestionSourceText($sourceText);
+            try {
+                $questions = self::generateQuestionsFromOpenAi($normalizedText, $type, $safeCount, $apiKey);
+                if (!empty($questions)) {
+                    return $questions;
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('OpenAI Generation failed: ' . $e->getMessage());
+            }
+        }
+
+        return self::generateQuestionsLocally($sourceText, $type, $safeCount);
+    }
+
+    private static function generateQuestionsFromOpenAi(string $sourceText, string $type, int $count, string $apiKey): array
+    {
+        $prompt = sprintf(
+            "You are an expert educator. Based on the following source text, generate %d %s questions.\n" .
+            "The output MUST be a JSON object with a single key 'questions' containing an array of objects.\n" .
+            "Each object must have the following keys:\n" .
+            "- 'prompt' (string): The question text.\n" .
+            "- 'options' (array of strings): For MCQ and True/False, provide exactly 4 options for MCQ or 2 options for True/False. For Essay/Short Answer, provide an empty array.\n" .
+            "- 'answer' (string): The exact correct answer from the options, or a sample answer for Essay/Short Answer.\n\n" .
+            "Source Text:\n%s",
+            $count,
+            $type,
+            $sourceText
+        );
+
+        $response = \Illuminate\Support\Facades\Http::withToken($apiKey)
+            ->timeout(60)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4o-mini',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You are an assessment generator that outputs strictly JSON.'
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ],
+                ],
+                'temperature' => 0.7,
+                'response_format' => ['type' => 'json_object']
+            ]);
+
+        if ($response->successful()) {
+            $content = $response->json('choices.0.message.content');
+            
+            $json = json_decode($content, true);
+            if (is_array($json) && isset($json['questions']) && is_array($json['questions'])) {
+                return $json['questions'];
+            }
+        }
+
+        return [];
+    }
+
+    private static function generateQuestionsLocally(string $sourceText, string $type, int $count): array
+    {
         $normalizedText = self::normalizeQuestionSourceText($sourceText);
         $topics = self::extractQuestionTopics($normalizedText);
         $sentenceMap = self::buildTopicSentenceMap($normalizedText, $topics);

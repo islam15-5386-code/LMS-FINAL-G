@@ -22,6 +22,37 @@ class TenantBrandingController extends Controller
         ]);
     }
 
+    // Public lookup endpoint by subdomain (used by frontend to fetch branding before auth)
+    public function lookup(Request $request): JsonResponse
+    {
+        $host = $request->getHost();
+        $subdomain = null;
+
+        if (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1')) {
+            $parts = explode('.', $host);
+            $subdomain = $parts[0] ?? null;
+        } else {
+            $parts = explode('.', $host);
+            if (count($parts) >= 3) $subdomain = $parts[0];
+        }
+
+        if ($request->headers->has('X-Tenant') && (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1'))) {
+            $subdomain = $request->header('X-Tenant');
+        }
+
+        if ($subdomain === null) {
+            return response()->json(['message' => 'Institute not found.'], 404);
+        }
+
+        $tenant = Tenant::query()->where('subdomain', $subdomain)->first();
+
+        if ($tenant === null) {
+            return response()->json(['message' => 'Institute not found.'], 404);
+        }
+
+        return response()->json(['data' => LmsSupport::serializeBranding($tenant)]);
+    }
+
     public function update(Request $request): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin'])->loadMissing('tenant');

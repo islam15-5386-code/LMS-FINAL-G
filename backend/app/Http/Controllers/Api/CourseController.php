@@ -181,6 +181,67 @@ class CourseController extends Controller
         ], 201);
     }
 
+    public function updateModule(Request $request, Course $course, CourseModule $module): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+        abort_if($module->course_id !== $course->id, 404, 'Module not found for this course.');
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'drip_days' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $module->update([
+            'title' => $validated['title'],
+            'drip_days' => $validated['drip_days'] ?? 0,
+        ]);
+
+        LmsSupport::audit($user, 'Updated course module', $module->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Module updated successfully.',
+            'data' => LmsSupport::serializeModule($module->load('lessons.completedUsers:id,name'), $user),
+        ]);
+    }
+
+    public function deleteModule(Request $request, Course $course, CourseModule $module): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+        abort_if($module->course_id !== $course->id, 404, 'Module not found for this course.');
+
+        $module->delete();
+
+        LmsSupport::audit($user, 'Deleted course module', $module->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Module deleted successfully.',
+        ]);
+    }
+
+    public function reorderModules(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+
+        $validated = $request->validate([
+            'module_ids' => ['required', 'array'],
+            'module_ids.*' => ['integer', 'exists:course_modules,id'],
+        ]);
+
+        foreach ($validated['module_ids'] as $index => $id) {
+            $course->modules()->where('id', $id)->update(['position' => $index + 1]);
+        }
+
+        LmsSupport::audit($user, 'Reordered course modules', $course->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Modules reordered successfully.',
+            'data' => LmsSupport::serializeCourse($course->fresh()->load('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'), $user),
+        ]);
+    }
+
     public function storeLesson(Request $request, Course $course, CourseModule $module): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
@@ -208,6 +269,72 @@ class CourseController extends Controller
             'message' => 'Lesson created successfully.',
             'data' => LmsSupport::serializeLesson($lesson->load('completedUsers:id,name'), $user),
         ], 201);
+    }
+
+    public function updateLesson(Request $request, Course $course, CourseModule $module, Lesson $lesson): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+        abort_if($module->course_id !== $course->id || $lesson->course_module_id !== $module->id, 404, 'Lesson not found.');
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'in:video,document,quiz,assignment,live'],
+            'duration_minutes' => ['nullable', 'integer', 'min:0'],
+            'release_at' => ['nullable', 'date'],
+        ]);
+
+        $lesson->update([
+            'title' => $validated['title'],
+            'type' => $validated['type'],
+            'duration_minutes' => $validated['duration_minutes'] ?? 0,
+            'release_at' => $validated['release_at'] ?? now()->addDays($module->drip_days),
+        ]);
+
+        LmsSupport::audit($user, 'Updated lesson', $lesson->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Lesson updated successfully.',
+            'data' => LmsSupport::serializeLesson($lesson->load('completedUsers:id,name'), $user),
+        ]);
+    }
+
+    public function deleteLesson(Request $request, Course $course, CourseModule $module, Lesson $lesson): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+        abort_if($module->course_id !== $course->id || $lesson->course_module_id !== $module->id, 404, 'Lesson not found.');
+
+        $lesson->delete();
+
+        LmsSupport::audit($user, 'Deleted lesson', $lesson->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Lesson deleted successfully.',
+        ]);
+    }
+
+    public function reorderLessons(Request $request, Course $course, CourseModule $module): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+        abort_if($module->course_id !== $course->id, 404, 'Module not found.');
+
+        $validated = $request->validate([
+            'lesson_ids' => ['required', 'array'],
+            'lesson_ids.*' => ['integer', 'exists:lessons,id'],
+        ]);
+
+        foreach ($validated['lesson_ids'] as $index => $id) {
+            $module->lessons()->where('id', $id)->update(['position' => $index + 1]);
+        }
+
+        LmsSupport::audit($user, 'Reordered lessons', $module->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Lessons reordered successfully.',
+            'data' => LmsSupport::serializeModule($module->fresh()->load('lessons.completedUsers:id,name'), $user),
+        ]);
     }
 
     public function completeLesson(Request $request, Course $course, Lesson $lesson): JsonResponse
