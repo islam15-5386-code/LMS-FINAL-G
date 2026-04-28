@@ -155,6 +155,56 @@ class AssessmentController extends Controller
         ]);
     }
 
+    public function show(Request $request, Assessment $assessment): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+
+        abort_if($assessment->course?->tenant_id !== $user->tenant_id, 404, 'Assessment not found.');
+
+        return response()->json([
+            'data' => LmsSupport::serializeAssessment($assessment->load('questions')),
+        ]);
+    }
+
+    public function update(Request $request, Assessment $assessment): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+
+        abort_if($assessment->course?->tenant_id !== $user->tenant_id, 404, 'Assessment not found.');
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'string', 'max:255'],
+            'type' => ['sometimes', 'in:MCQ,True/False,Short Answer,Essay'],
+            'passing_mark' => ['sometimes', 'integer', 'min:0', 'max:100'],
+            'total_marks' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
+        $assessment->update($validated);
+
+        LmsSupport::audit($user, 'Updated assessment', $assessment->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Assessment updated successfully.',
+            'data' => LmsSupport::serializeAssessment($assessment->fresh()->load('questions')),
+        ]);
+    }
+
+    public function destroy(Request $request, Assessment $assessment): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+
+        abort_if($assessment->course?->tenant_id !== $user->tenant_id, 404, 'Assessment not found.');
+
+        $title = $assessment->title;
+        $assessment->delete();
+
+        LmsSupport::audit($user, 'Deleted assessment', $title, $request->ip());
+
+        return response()->json([
+            'message' => 'Assessment deleted successfully.',
+        ]);
+    }
+
     public function updateQuestion(Request $request, Assessment $assessment, \App\Models\AssessmentQuestion $question): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);

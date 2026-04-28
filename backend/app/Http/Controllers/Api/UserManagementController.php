@@ -11,6 +11,15 @@ use Illuminate\Validation\Rule;
 
 class UserManagementController extends Controller
 {
+    public function show(Request $request, User $user): JsonResponse
+    {
+        $admin = $this->authorizeRoles($request, ['admin']);
+
+        abort_unless($user->tenant_id === $admin->tenant_id, 404, 'User not found.');
+
+        return response()->json(['data' => LmsSupport::serializeUser($user)]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $admin = $this->authorizeRoles($request, ['admin']);
@@ -50,6 +59,29 @@ class UserManagementController extends Controller
         }
 
         return response()->json(['message' => 'User created successfully.', 'user' => LmsSupport::serializeUser($user)], 201);
+    }
+
+    public function update(Request $request, User $user): JsonResponse
+    {
+        $admin = $this->authorizeRoles($request, ['admin']);
+
+        abort_unless($user->tenant_id === $admin->tenant_id, 404, 'User not found.');
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'role' => ['sometimes', Rule::in(['student', 'teacher', 'admin'])],
+            'department' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $user->fill($validated);
+        $user->save();
+
+        return response()->json(['message' => 'User updated successfully.', 'user' => LmsSupport::serializeUser($user)]);
     }
 
     public function updateStatus(Request $request, User $user): JsonResponse

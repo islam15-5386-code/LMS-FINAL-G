@@ -112,7 +112,17 @@ export default function StudentCoursesPage() {
     void fetchCourses();
   }, [fetchCourses]);
 
-  const enrolledCourses = backendCourses ?? state.courses.filter((c) => c.status === "published");
+  const enrolledCourses = useMemo(() => {
+    if (backendCourses !== null) return backendCourses;
+
+    const actorId = currentUser?.id;
+    const enrolledCourseIds = state.enrollments
+      .filter((e) => (e.studentId === actorId || e.studentName === studentName) && e.status !== 'cancelled')
+      .map((e) => e.courseId);
+
+    return state.courses.filter((c) => enrolledCourseIds.includes(c.id));
+  }, [backendCourses, state.enrollments, state.courses, currentUser, studentName]);
+
   const activeCourse = enrolledCourses.find((course) => course.id === selectedCourse) ?? enrolledCourses[0];
 
 

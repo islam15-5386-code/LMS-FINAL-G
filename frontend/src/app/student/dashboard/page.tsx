@@ -1,32 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { BookOpen, Award, Video, CheckCircle, Clock, ArrowRight } from "lucide-react";
 import { DashboardLayout, PageHeader, StatsCard, StatusBadge, ProgressBar } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { percentageForStudent } from "@/lib/utils/lms-helpers";
+import { fetchMyCoursesFromBackend, getStoredToken } from "@/lib/api/lms-backend";
 
 export default function StudentDashboardPage() {
   const { state, currentUser } = useMockLms();
   const [loading, setLoading] = useState(true);
+  const [backendCourses, setBackendCourses] = useState<any[] | null>(null);
+  const [backendAssessments, setBackendAssessments] = useState<any[]>([]);
+
+  const fetchCourses = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) {
+      setBackendCourses([]);
+      setBackendAssessments([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const result = await fetchMyCoursesFromBackend();
+      setBackendCourses(result.courses);
+      setBackendAssessments(result.assessments);
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+      // Fallback to local
+      setBackendCourses(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(t);
-  }, []);
+    void fetchCourses();
+  }, [fetchCourses]);
 
   const studentName = currentUser?.name ?? state.users.find((u) => u.role === "student")?.name ?? "Student";
 
-  const myEnrollments = state.enrollments.filter((e) =>
-    e.studentId === currentUser?.id || e.studentName === studentName
-  );
-  const enrolledCourses = state.courses.filter((c) => myEnrollments.some((e) => e.courseId === c.id));
+  const enrolledCourses = useMemo(() => {
+    if (backendCourses !== null) return backendCourses;
+
+    const actorId = currentUser?.id;
+    const enrolledCourseIds = state.enrollments
+      .filter((e) => (e.studentId === actorId || e.studentName === studentName) && e.status !== 'cancelled')
+      .map((e) => e.courseId);
+
+    return state.courses.filter((c) => enrolledCourseIds.includes(c.id));
+  }, [backendCourses, state.enrollments, state.courses, currentUser, studentName]);
+
   const myCerts = state.certificates.filter((c) => c.studentName === studentName && !c.revoked);
   const upcomingClasses = state.liveClasses.filter((lc) => lc.status !== "recorded").slice(0, 3);
 
   const avgProgress = enrolledCourses.length > 0
-    ? Math.round(enrolledCourses.reduce((sum, c) => sum + percentageForStudent(c, studentName), 0) / enrolledCourses.length)
+    ? Math.round(enrolledCourses.reduce((sum, c) => sum + (c.progressPercentage ?? 0), 0) / enrolledCourses.length)
     : 0;
 
   const greeting = (() => {
@@ -93,7 +124,9 @@ export default function StudentDashboardPage() {
             ) : (
               <div className="grid gap-3">
                 {enrolledCourses.slice(0, 4).map((course) => {
-                  const pct = percentageForStudent(course, studentName);
+                  const pct = course.progressPercentage ?? 0;
+                  const completedCount = course.completedLessonsCount ?? 0;
+                  const totalCount = course.lessonsCount ?? 0;
                   return (
                     <div key={course.id} className="card-sm hover:-translate-y-0.5 transition-all">
                       <div className="flex items-center gap-3 mb-3">
@@ -102,7 +135,11 @@ export default function StudentDashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-foreground truncate">{course.title}</p>
-                          <p className="text-xs text-muted-foreground">{course.category}</p>
+                          <div className="flex items-center gap-2">
+                             <p className="text-xs text-muted-foreground">{course.category}</p>
+                             <span className="text-[10px] text-muted-foreground/60">•</span>
+                             <p className="text-[10px] font-medium text-muted-foreground">{completedCount}/{totalCount} lessons</p>
+                          </div>
                         </div>
                         <span className={`text-sm font-bold ${pct === 100 ? "text-success" : "text-foreground"}`}>{pct}%</span>
                       </div>

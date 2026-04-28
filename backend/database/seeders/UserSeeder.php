@@ -16,12 +16,18 @@ class UserSeeder extends Seeder
         $demoTenant = Tenant::query()->orderBy('id')->first();
 
         $demoLogins = [
-            ['name' => 'Test Student', 'email' => 'student@example.com', 'phone' => '01700000001', 'role' => 'student', 'department' => 'CSE'],
-            ['name' => 'Test Admin', 'email' => 'admin@example.com', 'phone' => '01700000002', 'role' => 'admin', 'department' => 'Administration'],
-            ['name' => 'Test Teacher', 'email' => 'teacher@example.com', 'phone' => '01700000003', 'role' => 'teacher', 'department' => 'Faculty'],
-            ['name' => 'BSMS Student', 'email' => 'student@bsms.com', 'phone' => '01700000101', 'role' => 'student', 'department' => 'CSE'],
-            ['name' => 'BSMS Admin', 'email' => 'admin@bsms.com', 'phone' => '01700000102', 'role' => 'admin', 'department' => 'Administration'],
-            ['name' => 'BSMS Teacher', 'email' => 'teacher@bsms.com', 'phone' => '01700000103', 'role' => 'teacher', 'department' => 'Faculty'],
+            ['name' => 'Test Student 1', 'email' => 'student@example.com', 'phone' => '01700000001', 'role' => 'student', 'department' => 'CSE'],
+            ['name' => 'Test Student 2', 'email' => 'student2@example.com', 'phone' => '01700000011', 'role' => 'student', 'department' => 'CSE'],
+            ['name' => 'Test Admin 1', 'email' => 'admin@example.com', 'phone' => '01700000002', 'role' => 'admin', 'department' => 'Administration'],
+            ['name' => 'Test Admin 2', 'email' => 'admin2@example.com', 'phone' => '01700000012', 'role' => 'admin', 'department' => 'Administration'],
+            ['name' => 'Test Teacher 1', 'email' => 'teacher@example.com', 'phone' => '01700000003', 'role' => 'teacher', 'department' => 'Faculty'],
+            ['name' => 'Test Teacher 2', 'email' => 'teacher2@example.com', 'phone' => '01700000013', 'role' => 'teacher', 'department' => 'Faculty'],
+            ['name' => 'BSMS Student 1', 'email' => 'student@bsms.com', 'phone' => '01700000101', 'role' => 'student', 'department' => 'CSE'],
+            ['name' => 'BSMS Student 2', 'email' => 'student2@bsms.com', 'phone' => '01700000111', 'role' => 'student', 'department' => 'CSE'],
+            ['name' => 'BSMS Admin 1', 'email' => 'admin@bsms.com', 'phone' => '01700000102', 'role' => 'admin', 'department' => 'Administration'],
+            ['name' => 'BSMS Admin 2', 'email' => 'admin2@bsms.com', 'phone' => '01700000112', 'role' => 'admin', 'department' => 'Administration'],
+            ['name' => 'BSMS Teacher 1', 'email' => 'teacher@bsms.com', 'phone' => '01700000103', 'role' => 'teacher', 'department' => 'Faculty'],
+            ['name' => 'BSMS Teacher 2', 'email' => 'teacher2@bsms.com', 'phone' => '01700000113', 'role' => 'teacher', 'department' => 'Faculty'],
         ];
 
         foreach ($demoLogins as $demoLogin) {
@@ -48,13 +54,15 @@ class UserSeeder extends Seeder
         $nameIndex = 0;
 
         Tenant::query()->orderBy('id')->each(function (Tenant $tenant) use ($roleIds, &$nameIndex): void {
-            $this->createUserForTenant($tenant, 'admin', 'admin', 'Administration', $nameIndex++);
+            for ($adminIndex = 0; $adminIndex < 2; $adminIndex++) {
+                $this->createUserForTenant($tenant, 'admin', 'admin', 'Administration', $nameIndex++);
+            }
 
-            for ($teacherIndex = 0; $teacherIndex < 10; $teacherIndex++) {
+            for ($teacherIndex = 0; $teacherIndex < 2; $teacherIndex++) {
                 $this->createUserForTenant($tenant, 'teacher', 'teacher', 'Faculty', $nameIndex++);
             }
 
-            for ($studentIndex = 0; $studentIndex < 10; $studentIndex++) {
+            for ($studentIndex = 0; $studentIndex < 2; $studentIndex++) {
                 $departments = ['CSE', 'BBA', 'English', 'Textile', 'Marketing', 'Accounts', 'HR', 'Operations'];
                 $this->createUserForTenant(
                     $tenant,

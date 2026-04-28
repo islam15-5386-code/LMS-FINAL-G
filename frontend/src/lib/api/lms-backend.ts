@@ -608,6 +608,28 @@ export async function publishTeacherAssessment(assessmentId: string) {
   return normalizeAssessment(data.data as unknown as Record<string, unknown>);
 }
 
+export async function getAssessmentOnBackend(assessmentId: string) {
+  const response = await apiFetch(`/api/v1/assessments/${assessmentId}`);
+  const data = await unwrapResponse<{ data: Assessment }>(response);
+  return normalizeAssessment(data.data as unknown as Record<string, unknown>);
+}
+
+export async function updateAssessmentOnBackend(assessmentId: string, payload: { title?: string; type?: string; passing_mark?: number; total_marks?: number }) {
+  const response = await apiFetch(`/api/v1/assessments/${assessmentId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+  const data = await unwrapResponse<{ data: Assessment }>(response);
+  return normalizeAssessment(data.data as unknown as Record<string, unknown>);
+}
+
+export async function deleteAssessmentOnBackend(assessmentId: string) {
+  const response = await apiFetch(`/api/v1/assessments/${assessmentId}`, {
+    method: "DELETE"
+  });
+  return unwrapResponse<{ message: string }>(response);
+}
+
 export async function updateAssessmentQuestionOnBackend(assessmentId: string, questionId: string, payload: { prompt?: string; options?: string[]; answer?: string }) {
   const response = await apiFetch(`/api/v1/assessments/${assessmentId}/questions/${questionId}`, {
     method: "PUT",
@@ -631,6 +653,12 @@ export async function updateTenantBrandingOnBackend(branding: TenantBranding) {
 
   const payload = await unwrapResponse<{ data: TenantBranding }>(response);
   return normalizeBranding(payload.data as unknown as Record<string, unknown>);
+}
+
+export async function fetchCourseOnBackend(courseId: string) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}`);
+  const payload = await unwrapResponse<{ data: unknown }>(response);
+  return normalizeCourse(payload.data as Record<string, unknown>);
 }
 
 export async function createCourseOnBackend(payload: {
@@ -671,7 +699,7 @@ export async function fetchCoursesFromBackend(search?: string) {
 }
 
 export async function fetchMyCoursesFromBackend(): Promise<{ courses: ReturnType<typeof normalizeCourse>[]; assessments: ReturnType<typeof normalizeAssessment>[] }> {
-  const response = await apiFetch("/api/v1/student/my-courses");
+  const response = await apiFetch("/api/v1/student/courses");
   const payload = await unwrapResponse<{ data: unknown[]; assessments: unknown[] }>(response);
   return {
     courses: (payload.data ?? []).map((c) => normalizeCourse(c as Record<string, unknown>)),
@@ -740,6 +768,16 @@ export async function fetchPublicCoursesFromBackend(search?: string) {
 export async function publishCourseOnBackend(courseId: string) {
   const response = await apiFetch(`/api/v1/courses/${courseId}/publish`, {
     method: "POST"
+  });
+
+  const data = await unwrapResponse<{ data: Course }>(response);
+  return normalizeCourse(data.data as unknown as Record<string, unknown>);
+}
+
+export async function setCourseAssessmentGateOnBackend(courseId: string, enabled: boolean) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/assessment-gate`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled })
   });
 
   const data = await unwrapResponse<{ data: Course }>(response);
@@ -880,6 +918,40 @@ export async function createEnrollmentOnBackend(payload: { courseId: string; stu
   });
 
   return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function createUserOnBackend(payload: { name: string; email: string; password: string; role: string; department?: string }) {
+  const response = await apiFetch("/api/v1/users", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  const data = await unwrapResponse<{ user: UserProfile }>(response);
+  return normalizeUser(data.user as unknown as Record<string, unknown>);
+}
+
+export async function getUserOnBackend(userId: string) {
+  const response = await apiFetch(`/api/v1/admin/users/${userId}`);
+  const payload = await unwrapResponse<{ data: UserProfile }>(response);
+  return normalizeUser(payload.data as Record<string, unknown>);
+}
+
+export async function updateUserOnBackend(userId: string, payload: { name?: string; email?: string; role?: string; department?: string }) {
+  const response = await apiFetch(`/api/v1/admin/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+
+  const result = await unwrapResponse<{ user: UserProfile }>(response);
+  return normalizeUser(result.user as unknown as Record<string, unknown>);
+}
+
+export async function deleteUserOnBackend(userId: string) {
+  const response = await apiFetch(`/api/v1/admin/users/${userId}`, {
+    method: "DELETE"
+  });
+
+  return unwrapResponse<{ message: string }>(response);
 }
 
 export async function addToWishlistOnBackend(courseId: string): Promise<Wishlist> {
@@ -1105,7 +1177,7 @@ export async function removeTeacherFromCourseOnBackend(courseId: string, teacher
 }
 
 export async function fetchCourseStudentsFromBackend(courseId: string) {
-  const response = await apiFetch(`/api/v1/admin/courses/${courseId}/students`, { method: "GET" });
+  const response = await apiFetch(`/api/v1/courses/${courseId}/students`, { method: "GET" });
   return unwrapResponse<{ data: any[] }>(response);
 }
 

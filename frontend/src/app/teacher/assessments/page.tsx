@@ -47,8 +47,8 @@ function TeacherAssessmentsContent() {
   const [editingQ, setEditingQ] = useState<{ id: string; assessmentId: string; prompt: string; options: string[]; answer: string } | null>(null);
 
   useEffect(() => {
-    const courseId = searchParams.get("courseId");
-    const moduleTitle = searchParams.get("moduleTitle");
+    const courseId = searchParams?.get("courseId");
+    const moduleTitle = searchParams?.get("moduleTitle");
     if (courseId) {
       setGenForm((current) => ({
         ...current,
@@ -77,7 +77,7 @@ function TeacherAssessmentsContent() {
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!genForm.courseId || !genForm.title || !genForm.sourceText) return;
-    const moduleId = searchParams.get("moduleId");
+    const moduleId = searchParams?.get("moduleId");
     setGenerating(true);
     try {
       await createAssessmentDraft({

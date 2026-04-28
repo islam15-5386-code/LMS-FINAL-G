@@ -340,7 +340,7 @@ export function CompliancePanel() {
 
         <div className="mt-6 rounded-[1.5rem] border border-border/70 bg-background/75 p-4 shadow-soft dark:border-white/8 dark:bg-white/5">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-[#1A1A2E] dark:text-[#F5C766]" />
+            <Mail className="h-4 w-4 text-[#1f2c69] dark:text-indigo-200" />
             <p className="text-sm font-semibold">Send Email via SMTP</p>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -491,7 +491,7 @@ export function BillingPanel() {
         <Section title="Plan management" subtitle="Switch between Starter, Growth, and Professional and see seat economics update immediately.">
           <div className="grid gap-4 md:grid-cols-3">
             {(Object.keys(planMatrix) as Array<keyof typeof planMatrix>).map((plan) => (
-              <div key={plan} className={`overflow-hidden rounded-[1.85rem] border p-5 shadow-soft transition ${state.billing.plan === plan ? "border-[#E8A020]/25 bg-[linear-gradient(160deg,#1A1A2E,#2D2D50_58%,#E8A020)] text-white shadow-glow dark:border-[#E8A020]/25" : "border-border/70 bg-card/85 dark:border-white/8 dark:bg-white/5"}`}>
+              <div key={plan} className={`overflow-hidden rounded-[1.85rem] border p-5 shadow-soft transition ${state.billing.plan === plan ? "border-primary/25 bg-[linear-gradient(160deg,#1f2c69,#3346a8_58%,#7c5cff)] text-white shadow-glow dark:border-primary/25" : "border-border/70 bg-card/85 dark:border-white/8 dark:bg-white/5"}`}>
                 <p className="text-pretty-wrap font-serif text-[clamp(2rem,2vw,2.45rem)] leading-none">{plan}</p>
                 <p className={`text-pretty-wrap mt-3 text-sm leading-6 ${state.billing.plan === plan ? "text-white/80" : "text-muted-foreground"}`}>
                   ${planMatrix[plan].price}/mo · {planMatrix[plan].seatLimit} seats · ${planMatrix[plan].overagePerSeat}/seat overage
@@ -511,7 +511,7 @@ export function BillingPanel() {
               <p className="text-sm text-muted-foreground">{utilization}% utilized</p>
             </div>
             <input
-              className="mt-5 w-full accent-[#E8A020]"
+              className="mt-5 w-full accent-[#6366f1]"
               type="range"
               min={10}
               max={2200}
@@ -519,7 +519,7 @@ export function BillingPanel() {
               onChange={(event) => updateActiveStudents(Number(event.target.value))}
             />
             <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#1A1A2E] via-[#2D2D50] to-[#E8A020]" style={{ width: `${Math.min(100, utilization)}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#1f2c69] via-[#3346a8] to-[#7c5cff]" style={{ width: `${Math.min(100, utilization)}%` }} />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
               Current overage charge: <span className="font-semibold text-foreground">${overage}</span>
@@ -573,7 +573,7 @@ export function SeatUtilizationPanel() {
         </div>
 
         <input
-          className="mt-6 w-full accent-[#E8A020]"
+          className="mt-6 w-full accent-[#6366f1]"
           type="range"
           min={10}
           max={2200}
@@ -599,7 +599,7 @@ export function SeatUtilizationPanel() {
         </div>
 
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-muted/80 dark:bg-white/10">
-          <div className="h-full rounded-full bg-gradient-to-r from-[#1A1A2E] via-[#2D2D50] to-[#E8A020]" style={{ width: `${Math.min(100, utilization)}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-[#1f2c69] via-[#3346a8] to-[#7c5cff]" style={{ width: `${Math.min(100, utilization)}%` }} />
         </div>
 
         <p className="mt-4 text-sm text-muted-foreground">
@@ -628,14 +628,14 @@ export function PlanManagementPanel() {
               key={plan}
               className={`relative overflow-hidden rounded-[1.9rem] border p-4 sm:p-5 ${
                 active
-                  ? "border-[#E8A020]/25 bg-[linear-gradient(160deg,#1A1A2E,#2D2D50_58%,#E8A020)] text-white shadow-glow dark:border-[#E8A020]/25"
+                  ? "border-primary/25 bg-[linear-gradient(160deg,#1f2c69,#3346a8_58%,#7c5cff)] text-white shadow-glow dark:border-primary/25"
                   : "border-border/70 bg-card/85 shadow-soft dark:border-white/8 dark:bg-white/5"
               }`}
             >
               <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_55%)]" />
               <div className="relative">
                 <div className="flex items-start justify-end gap-3">
-                  <div className={`shrink-0 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.24em] ${active ? "bg-white/12 text-white" : "bg-[#1A1A2E]/6 text-[#1A1A2E] dark:bg-white/10 dark:text-[#F5C766]"}`}>
+                  <div className={`shrink-0 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.24em] ${active ? "bg-white/12 text-white" : "bg-[#1f2c69]/8 text-[#1f2c69] dark:bg-white/10 dark:text-indigo-200"}`}>
                     {planMatrix[plan].seatLimit} seats
                   </div>
                 </div>
@@ -663,7 +663,7 @@ export function PlanManagementPanel() {
                 </div>
 
                 <PrimaryButton
-                  className={`mt-5 w-full text-center ${active ? "bg-white text-[#1A1A2E] ring-0 hover:shadow-soft" : ""}`}
+                  className={`mt-5 w-full text-center ${active ? "bg-white text-[#1f2c69] ring-0 hover:shadow-soft" : ""}`}
                   onClick={() => updatePlan(plan)}
                   disabled={active}
                 >
@@ -847,35 +847,21 @@ export function AdminCoursePanel() {
         {loading ? (
           <p>Loading courses...</p>
         ) : courses.length > 0 ? (
-          <div className="overflow-auto rounded-[1.4rem] border border-foreground/10 bg-white dark:border-white/8 dark:bg-[#13212a]">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-foreground/10 bg-background/70 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Title</th>
-                  <th className="px-4 py-3 font-medium">Teachers</th>
-                  <th className="px-4 py-3 font-medium">Students</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courses.map((course) => (
-                  <tr key={course.id} className="border-b border-foreground/8">
-                    <td className="px-4 py-3 font-medium">{course.title}</td>
-                    <td className="px-4 py-3">{course.teacher_count || 0}</td>
-                    <td className="px-4 py-3">{course.enrollment_count || 0}</td>
-                    <td className="px-4 py-3">
-                       <Badge className={course.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
-                         {course.status}
-                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <SecondaryButton onClick={() => setSelectedCourse(course)}>Manage</SecondaryButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.map((course) => (
+              <div key={course.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-4 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{course.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{course.teacher_count || 0} teachers · {course.enrollment_count || 0} students</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge className={course.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>{course.status}</Badge>
+                    <SecondaryButton onClick={() => setSelectedCourse(course)} className="px-3 py-1.5 text-xs">Manage</SecondaryButton>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="text-muted-foreground">No courses found.</p>
@@ -979,7 +965,7 @@ function AdminCourseDetails({ course, onBack }: { course: any; onBack: () => voi
                 {assignedTeachers.map(teacher => (
                   <div key={teacher.id} className="flex items-center justify-between p-3 rounded-xl border border-foreground/10 bg-white dark:bg-white/5">
                     <p className="text-sm font-medium">{teacher.name}</p>
-                    <button onClick={() => handleRemoveTeacher(teacher.id)} className="text-xs text-red-500">Remove</button>
+                    <SecondaryButton onClick={() => handleRemoveTeacher(teacher.id)} className="px-3 py-1.5 text-xs text-rose-600">Remove</SecondaryButton>
                   </div>
                 ))}
              </div>
@@ -995,7 +981,7 @@ function AdminCourseDetails({ course, onBack }: { course: any; onBack: () => voi
                       <p className="text-xs text-muted-foreground">{enrollment.status}</p>
                    </div>
                    {enrollment.status === 'active' && (
-                     <button onClick={() => handleRemoveStudent(enrollment.student_id)} className="text-xs text-red-500">Remove</button>
+                     <SecondaryButton onClick={() => handleRemoveStudent(enrollment.student_id)} className="px-3 py-1.5 text-xs text-rose-600">Remove</SecondaryButton>
                    )}
                 </div>
               ))}
@@ -1007,46 +993,230 @@ function AdminCourseDetails({ course, onBack }: { course: any; onBack: () => voi
 }
 
 export function EnrollmentManagementPanel() {
-  const { state } = useMockLms();
+  const { state, getEnrollment, updateEnrollment, deleteEnrollment } = useMockLms();
   const [showAllEnrollments, setShowAllEnrollments] = useState(false);
-  const visibleEnrollments = showAllEnrollments ? state.enrollments : state.enrollments.slice(0, 5);
+  const visibleEnrollments = showAllEnrollments ? state.enrollments : state.enrollments.slice(0, 8);
+
+  const totalEnrollments = state.enrollments.length;
+  const activeEnrollments = state.enrollments.filter((e) => e.status === "active").length;
+  const completedEnrollments = state.enrollments.filter((e) => e.status === "completed").length;
+  const pendingEnrollments = state.enrollments.filter((e) => e.status === "pending").length;
+
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<{ status: string; progressPercentage: number }>({ status: "active", progressPercentage: 0 });
+  const [isLoading, setIsLoading] = useState(false);
+  const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const handleView = async (enrollment: any) => {
+    try {
+      setIsLoading(true);
+      await getEnrollment(enrollment.id);
+      setSelectedEnrollment(enrollment);
+      setAlert({ type: "success", msg: `Viewing ${enrollment.studentName}` });
+    } catch (err) {
+      setAlert({ type: "error", msg: "Failed to load enrollment" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditClick = (enrollment: any) => {
+    setSelectedEnrollment(enrollment);
+    setEditForm({ status: enrollment.status, progressPercentage: enrollment.progressPercentage ?? 0 });
+    setShowEdit(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedEnrollment) return;
+    try {
+      setIsLoading(true);
+      await updateEnrollment(selectedEnrollment.id, { status: editForm.status, progressPercentage: editForm.progressPercentage });
+      setAlert({ type: "success", msg: `Enrollment for ${selectedEnrollment.studentName} updated` });
+      setShowEdit(false);
+      setSelectedEnrollment(null);
+    } catch (err) {
+      setAlert({ type: "error", msg: "Failed to update enrollment" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (enrollment: any) => {
+    setSelectedEnrollment(enrollment);
+    setShowDelete(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedEnrollment) return;
+    try {
+      setIsLoading(true);
+      await deleteEnrollment(selectedEnrollment.id);
+      setAlert({ type: "success", msg: `Enrollment removed: ${selectedEnrollment.studentName}` });
+      setShowDelete(false);
+      setSelectedEnrollment(null);
+    } catch (err) {
+      setAlert({ type: "error", msg: "Failed to remove enrollment" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <Section title="Enrollment management" subtitle="Monitor course-wise enrollment, student progress, and enrollment status changes from the admin workspace.">
-      <div className="grid gap-4 2xl:grid-cols-[0.9fr_1.1fr]">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard label="Total enrollments" value={String(state.enrollments.length)} icon={<Users className="h-5 w-5" />} className="min-h-[9rem]" />
-          <StatCard label="Active" value={String(state.enrollments.filter((enrollment) => enrollment.status === "active").length)} icon={<Users className="h-5 w-5" />} className="min-h-[9rem]" />
-          <StatCard label="Completed" value={String(state.enrollments.filter((enrollment) => enrollment.status === "completed").length)} icon={<Users className="h-5 w-5" />} className="min-h-[9rem]" />
-          <StatCard label="Pending" value={String(state.enrollments.filter((enrollment) => enrollment.status === "pending").length)} icon={<Users className="h-5 w-5" />} className="min-h-[9rem]" />
-        </div>
-        <div className="overflow-x-auto rounded-[1.4rem] border border-foreground/10 bg-white dark:border-white/8 dark:bg-[#13212a]">
-          <table className="min-w-full table-fixed text-left text-sm">
-            <thead className="border-b border-foreground/10 bg-background/70 text-muted-foreground">
-              <tr>
-                <th className="w-[26%] px-4 py-3 font-medium">Student</th>
-                <th className="w-[34%] px-4 py-3 font-medium">Course</th>
-                <th className="w-[20%] px-4 py-3 font-medium">Status</th>
-                <th className="w-[20%] px-4 py-3 font-medium">Progress</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleEnrollments.map((enrollment) => (
-                <tr key={enrollment.id} className="border-b border-foreground/8">
-                  <td className="px-4 py-3 align-top text-pretty-wrap break-words">{enrollment.studentName ?? enrollment.studentId}</td>
-                  <td className="px-4 py-3 align-top text-pretty-wrap break-words">{enrollment.courseTitle ?? enrollment.courseId}</td>
-                  <td className="px-4 py-3 align-top text-pretty-wrap break-words">{enrollment.status}</td>
-                  <td className="px-4 py-3 align-top whitespace-nowrap">{enrollment.progressPercentage}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <div className="grid gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Total Enrollments", value: totalEnrollments, color: "from-blue-500 to-cyan-500", bg: "from-blue-500/10 to-cyan-500/10", icon: "👥" },
+          { label: "Active", value: activeEnrollments, color: "from-green-500 to-emerald-500", bg: "from-green-500/10 to-emerald-500/10", icon: "✓" },
+          { label: "Completed", value: completedEnrollments, color: "from-purple-500 to-pink-500", bg: "from-purple-500/10 to-pink-500/10", icon: "🎓" },
+          { label: "Pending", value: pendingEnrollments, color: "from-amber-500 to-orange-500", bg: "from-amber-500/10 to-orange-500/10", icon: "⏳" },
+        ].map((stat, idx) => (
+          <div key={idx} className={`rounded-xl p-4 bg-gradient-to-br ${stat.bg} border border-gradient-to-r ${stat.color} border-opacity-10`}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-2xl">{stat.icon}</span>
+            </div>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{stat.label}</p>
+            <p className="text-3xl font-bold mt-2 bg-gradient-to-r ${stat.color} bg-clip-text text-transparent">{stat.value}</p>
+          </div>
+        ))}
       </div>
-      {state.enrollments.length > 5 ? (
-        <SeeMoreButton expanded={showAllEnrollments} remaining={state.enrollments.length - 5} onClick={() => setShowAllEnrollments((current) => !current)} />
-      ) : null}
-    </Section>
+
+      {/* Enrollments List */}
+      <div className="card">
+        <h3 className="font-serif text-xl text-foreground mb-4">Recent Enrollments</h3>
+        <div className="grid gap-3">
+          {visibleEnrollments.map((enrollment) => {
+            const getStatusColor = (status: string) => {
+              if (status === "active") return "from-green-500 to-emerald-500";
+              if (status === "completed") return "from-purple-500 to-pink-500";
+              return "from-amber-500 to-orange-500";
+            };
+
+            const getStatusBg = (status: string) => {
+              if (status === "active") return "bg-green-100/50 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+              if (status === "completed") return "bg-purple-100/50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
+              return "bg-amber-100/50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+            };
+
+            return (
+              <div key={enrollment.id} className="group rounded-xl border border-border hover:border-[#E8A020]/50 bg-gradient-to-br from-card to-card/80 p-4 transition-all hover:shadow-lg">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1A1A2E] to-[#E8A020] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                      {enrollment.studentName?.split(" ").map((n) => n[0]).join("").toUpperCase() ?? "?"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-foreground truncate">{enrollment.studentName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{enrollment.courseTitle}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${getStatusBg(enrollment.status)}`}>
+                      {enrollment.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mb-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground">Progress</p>
+                    <p className="text-xs font-bold text-[#E8A020]">{enrollment.progressPercentage}%</p>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden bg-muted/50 dark:bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#E8A020] to-orange-400 transition-all duration-500"
+                      style={{ width: `${enrollment.progressPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleView(enrollment)}
+                    disabled={isLoading}
+                    className="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-600 hover:bg-blue-500/30 transition font-semibold disabled:opacity-50"
+                  >
+                    View
+                  </button>
+                  <button
+                    onClick={() => handleEditClick(enrollment)}
+                    disabled={isLoading}
+                    className="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 transition font-semibold disabled:opacity-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(enrollment)}
+                    disabled={isLoading}
+                    className="text-xs px-2 py-1 rounded-lg bg-red-500/20 text-red-600 hover:bg-red-500/30 transition font-semibold disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Edit Modal */}
+        {showEdit && selectedEnrollment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-card rounded-xl border border-border max-w-md w-full">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="font-serif text-lg">Edit Enrollment</h3>
+                <button type="button" onClick={() => setShowEdit(false)} className="opacity-70 hover:opacity-100">✕</button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div>
+                  <label className="text-sm font-semibold">Status</label>
+                  <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="w-full mt-2 rounded-lg border border-border px-3 py-2">
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold">Progress (%)</label>
+                  <input type="number" min={0} max={100} value={editForm.progressPercentage} onChange={(e) => setEditForm({ ...editForm, progressPercentage: parseInt(e.target.value) || 0 })} className="w-full mt-2 rounded-lg border border-border px-3 py-2" />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button onClick={handleEditSubmit} disabled={isLoading} className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-[#1A1A2E] to-[#E8A020] text-white font-semibold">{isLoading ? 'Saving...' : 'Save'}</button>
+                  <button onClick={() => setShowEdit(false)} className="flex-1 px-4 py-2 rounded-lg border border-border">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDelete && selectedEnrollment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-card rounded-xl border border-border max-w-md w-full p-6">
+              <h3 className="font-serif text-xl mb-2">Delete Enrollment</h3>
+              <p className="text-sm text-muted-foreground mb-4">Are you sure you want to remove <strong>{selectedEnrollment.studentName}</strong> from <strong>{selectedEnrollment.courseTitle}</strong>?</p>
+              <div className="flex gap-3">
+                <button onClick={handleDeleteConfirm} disabled={isLoading} className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white">{isLoading ? 'Deleting...' : 'Delete'}</button>
+                <button onClick={() => setShowDelete(false)} className="flex-1 px-4 py-2 rounded-lg border border-border">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {state.enrollments.length > 8 && (
+          <button
+            onClick={() => setShowAllEnrollments(!showAllEnrollments)}
+            className="w-full mt-4 py-2 text-sm font-semibold text-[#E8A020] hover:bg-[#E8A020]/5 rounded-lg transition-colors"
+          >
+            {showAllEnrollments ? "Show Less" : `Show All (${state.enrollments.length})`}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

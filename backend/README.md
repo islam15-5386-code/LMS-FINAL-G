@@ -24,13 +24,25 @@ Laravel backend for the Betopia LMS frontend demo, built for PostgreSQL only.
 - `routes/api.php`
   Versioned API routes under `/api/v1/...` plus frontend-compatible teacher aliases under `/api/teacher/...`.
 
-## Setup
+## Setup (PostgreSQL)
 
-1. Configure PostgreSQL in `.env`
-2. Run `composer install`
-3. Run `php artisan key:generate`
-4. Run `php artisan migrate:fresh --seed`
-5. Run `php artisan serve`
+1. Start PostgreSQL (Docker option):
+   - `docker compose -f docker-compose.postgres.yml up -d`
+2. Configure PostgreSQL in `.env`:
+   - `DB_CONNECTION=pgsql`
+   - `DB_HOST=127.0.0.1`
+   - `DB_PORT=5432`
+   - `DB_DATABASE=smart_lms_db`
+   - `DB_USERNAME=postgres`
+   - `DB_PASSWORD=newpassword`
+3. Run:
+   - `composer install`
+   - `php artisan key:generate`
+   - `php artisan migrate --force`
+4. Optional (preserve existing SQLite demo data):
+   - `php artisan db:import-sqlite-to-pgsql --fresh`
+5. Start backend:
+   - `php artisan serve --host=127.0.0.1 --port=8000`
 
 ## Notes
 

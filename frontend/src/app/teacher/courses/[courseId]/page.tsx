@@ -25,13 +25,22 @@ import { Badge, PrimaryButton, SecondaryButton, SelectInput, TextInput } from "@
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { percentageForStudent } from "@/lib/utils/lms-helpers";
 import type { Assessment, CourseModule, Lesson } from "@/lib/mock-lms";
+import { 
+  fetchCourseStudentsFromBackend, 
+  fetchCourseOnBackend,
+  addCourseModuleOnBackend,
+  addCourseLessonOnBackend,
+  uploadLessonContentOnBackend,
+  publishCourseOnBackend,
+  setCourseAssessmentGateOnBackend
+} from "@/lib/api/lms-backend";
 
 export default function TeacherCourseDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params);
   const searchParams = useSearchParams();
-  const { state, addModule, addLesson, uploadLessonContent, publishCourse, setCourseAssessmentGate } = useMockLms();
-  const course = useMemo(() => state.courses.find((item) => item.id === courseId), [state.courses, courseId]);
-  const { currentUser } = useMockLms();
+  const { state, currentUser } = useMockLms();
+  const [course, setCourse] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [moduleTitle, setModuleTitle] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
@@ -40,24 +49,59 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
   const [lessonReleaseAt, setLessonReleaseAt] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
   const [bulkUploadingModuleId, setBulkUploadingModuleId] = useState("");
+  const [courseStudents, setCourseStudents] = useState<any[]>([]);
+
+  const loadCourse = async () => {
+    if (!courseId) return;
+    try {
+      const data = await fetchCourseOnBackend(courseId);
+      setCourse(data);
+    } catch (err) {
+      console.error("Failed to load course:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadCourse();
+  }, [courseId]);
+
+  useEffect(() => {
+    if (courseId) {
+      void fetchCourseStudentsFromBackend(courseId)
+        .then((res) => setCourseStudents(res.data))
+        .catch(console.error);
+    }
+  }, [courseId]);
 
   useEffect(() => {
     if (!course) return;
-    const requestedModuleId = searchParams.get("moduleId");
+    const requestedModuleId = searchParams?.get("moduleId");
     setSelectedModuleId((current) =>
-      course.modules.some((moduleItem) => moduleItem.id === requestedModuleId)
+      course.modules.some((moduleItem: any) => moduleItem.id === requestedModuleId)
         ? requestedModuleId || ""
-        : course.modules.some((moduleItem) => moduleItem.id === current)
+        : course.modules.some((moduleItem: any) => moduleItem.id === current)
           ? current
           : course.modules[0]?.id || ""
     );
   }, [course, searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("fromAssessment") === "1") {
+    if (searchParams?.get("fromAssessment") === "1") {
       setUploadStatus("Assessment created and added to this module flow.");
     }
   }, [searchParams]);
+
+  if (loading) {
+    return (
+      <DashboardLayout role="teacher">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!course) {
     return (
@@ -86,13 +130,13 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
 
   const activeCourse = course;
   const courseAssessments = state.assessments.filter((assessment) => assessment.courseId === activeCourse.id);
-  const lessons = activeCourse.modules.flatMap((module) => module.lessons);
-  const uploadedLessons = lessons.filter((lesson) => Boolean(lesson.contentUrl || lesson.contentOriginalName));
+  const lessons = activeCourse.modules.flatMap((module: any) => module.lessons);
+  const uploadedLessons = lessons.filter((lesson: any) => Boolean(lesson.contentUrl || lesson.contentOriginalName));
   const hasUploadedResource = uploadedLessons.length > 0;
   const hasAssessmentConfigured = courseAssessments.length > 0;
   const hasPublishedAssessment = courseAssessments.some((assessment) => assessment.status === "published");
   const assessmentGateEnabled = course.assessmentGateEnabled ?? true;
-  const selectedModule = activeCourse.modules.find((module) => module.id === selectedModuleId) ?? activeCourse.modules[0];
+  const selectedModule = activeCourse.modules.find((module: any) => module.id === selectedModuleId) ?? activeCourse.modules[0];
   const selectedModuleAssessments = selectedModule
     ? assessmentsForModule(courseAssessments, selectedModule.title)
     : [];
@@ -103,15 +147,16 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
   async function handleAddModule() {
     const title = moduleTitle.trim();
     if (!title) return;
-    await addModule(activeCourse.id, title);
+    await addCourseModuleOnBackend(activeCourse.id, title);
     setModuleTitle("");
+    void loadCourse();
   }
 
   async function handleAddLesson() {
     const title = lessonTitle.trim();
     if (!title || !selectedModuleId) return;
 
-    await addLesson(activeCourse.id, selectedModuleId, {
+    await addCourseLessonOnBackend(activeCourse.id, selectedModuleId, {
       title,
       type: lessonType,
       durationMinutes: lessonDuration,
@@ -120,6 +165,7 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
     setLessonTitle("");
     setLessonDuration(15);
     setLessonReleaseAt("");
+    void loadCourse();
   }
 
   async function handleModuleContentUpload(moduleId: string, files: FileList | null) {
@@ -131,7 +177,7 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
 
     try {
       for (const file of fileList) {
-        const createdLesson = await addLesson(activeCourse.id, moduleId, {
+        const createdLesson = await addCourseLessonOnBackend(activeCourse.id, moduleId, {
           title: titleFromFile(file.name),
           type: lessonTypeFromFile(file),
           durationMinutes: durationFromFile(file),
@@ -139,11 +185,12 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
         });
 
         if (createdLesson) {
-          await uploadLessonContent(activeCourse.id, moduleId, createdLesson.id, file);
+          await uploadLessonContentOnBackend(activeCourse.id, moduleId, createdLesson.id, file);
         }
       }
 
       setUploadStatus(`Added ${fileList.length} content item${fileList.length === 1 ? "" : "s"} to the module.`);
+      void loadCourse();
     } catch {
       setUploadStatus("Module upload failed. Please try again with smaller files or upload one item at a time.");
     } finally {
@@ -163,7 +210,10 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
             </Link>
             <button
               type="button"
-              onClick={() => publishCourse(course.id)}
+              onClick={async () => {
+                await publishCourseOnBackend(course.id);
+                void loadCourse();
+              }}
               disabled={assessmentGateEnabled && !hasAssessmentConfigured}
               className="btn-primary inline-flex items-center gap-2"
             >
@@ -216,9 +266,12 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
               </div>
               <div className="mt-4 grid gap-3">
                 <TextInput value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="Module title" />
-                <SecondaryButton className="min-h-[42px]" onClick={() => void handleAddModule()}>
-                  Add module
-                </SecondaryButton>
+                <SecondaryButton
+                className="min-h-[42px] w-full"
+                onClick={handleAddModule}
+              >
+                Add module
+              </SecondaryButton>
               </div>
             </div>
 
@@ -232,7 +285,8 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <SelectInput value={selectedModuleId} onChange={(event) => setSelectedModuleId(event.target.value)}>
-                  {course.modules.map((module) => (
+                  {!course.modules.length && <option value="">No modules available</option>}
+                  {course.modules.map((module: any) => (
                     <option key={module.id} value={module.id}>{module.title}</option>
                   ))}
                 </SelectInput>
@@ -271,7 +325,7 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
             ) : (
               <>
                 <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-                  {course.modules.map((module, index) => (
+                  {course.modules.map((module: any, index: number) => (
                     <ModuleTab
                       key={module.id}
                       module={module}
@@ -329,15 +383,16 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
                   ) : null}
 
                   {selectedModule?.lessons.length ? (
-                    selectedModule.lessons.map((lesson, index) => (
+                    selectedModule.lessons.map((lesson: any, index: number) => (
                       <LessonResourceCard
                         key={lesson.id}
                         lesson={lesson}
                         index={index}
                         courseId={course.id}
                         moduleId={selectedModule.id}
-                        uploadLessonContent={uploadLessonContent}
+                        uploadLessonContent={uploadLessonContentOnBackend}
                         setUploadStatus={setUploadStatus}
+                        onRefresh={() => void loadCourse()}
                       />
                     ))
                   ) : (
@@ -371,7 +426,10 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
               <input
                 type="checkbox"
                 checked={assessmentGateEnabled}
-                onChange={(event) => void setCourseAssessmentGate(course.id, event.target.checked)}
+                onChange={async (event) => {
+                  await setCourseAssessmentGateOnBackend(course.id, event.target.checked);
+                  void loadCourse();
+                }}
                 className="h-5 w-5 accent-primary"
               />
             </label>
@@ -416,6 +474,36 @@ export default function TeacherCourseDetailPage({ params }: { params: Promise<{ 
               <Link href={`/teacher/assessments?courseId=${course.id}`} className="btn-accent w-full justify-center py-3">
                 <Sparkles className="h-4 w-4" /> Set assessment
               </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-foreground/10 bg-white p-5 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
+            <p className="font-serif text-2xl text-foreground">Enrolled Students</p>
+            <p className="mt-1 text-sm text-muted-foreground">Monitor who is learning and their current progress.</p>
+            
+            <div className="mt-5 grid gap-3">
+              {courseStudents.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-foreground/10 bg-background/80 p-6 text-sm text-center text-muted-foreground">
+                  No students enrolled yet.
+                </div>
+              ) : (
+                courseStudents.map((student) => (
+                  <div key={student.id} className="flex items-center justify-between p-4 rounded-2xl border border-foreground/10 bg-background/70 dark:border-white/8 dark:bg-white/5">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground truncate">{student.student_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{student.student_email}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-foreground">{student.progress}%</p>
+                        <Badge className={student.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}>
+                          {student.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -469,7 +557,7 @@ function ModuleTab({
   active: boolean;
   onClick: () => void;
 }) {
-  const uploaded = module.lessons.filter((lesson) => Boolean(lesson.contentUrl || lesson.contentOriginalName)).length;
+  const uploaded = module.lessons.filter((lesson: any) => Boolean(lesson.contentUrl || lesson.contentOriginalName)).length;
 
   return (
     <button
@@ -543,14 +631,16 @@ function LessonResourceCard({
   courseId,
   moduleId,
   uploadLessonContent,
-  setUploadStatus
+  setUploadStatus,
+  onRefresh
 }: {
   lesson: Lesson;
   index: number;
   courseId: string;
   moduleId: string;
-  uploadLessonContent: (courseId: string, moduleId: string, lessonId: string, file: File) => Promise<void>;
+  uploadLessonContent: (courseId: string, moduleId: string, lessonId: string, file: File) => Promise<any>;
   setUploadStatus: (status: string) => void;
+  onRefresh: () => void;
 }) {
   const hasVideo = !!lesson.contentUrl && /youtube\.com|youtu\.be/.test(lesson.contentUrl);
   const hasFile = !!lesson.contentUrl && !hasVideo;
@@ -607,6 +697,7 @@ function LessonResourceCard({
               try {
                 await uploadLessonContent(courseId, moduleId, lesson.id, file);
                 setUploadStatus(`Uploaded ${file.name} for ${lesson.title}.`);
+                onRefresh();
               } catch {
                 setUploadStatus(`Failed to upload ${file.name}.`);
               } finally {

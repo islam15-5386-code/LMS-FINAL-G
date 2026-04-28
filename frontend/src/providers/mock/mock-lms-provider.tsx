@@ -58,9 +58,16 @@ import {
   uploadTeacherNote,
   createPaymentOnBackend,
   initiateSslCommerzPayment,
+  createUserOnBackend,
   updateAssessmentQuestionOnBackend,
   deleteAssessmentQuestionOnBackend,
-  createAnnouncementOnBackend
+  createAnnouncementOnBackend,
+  getAssessmentOnBackend,
+  updateAssessmentOnBackend,
+  deleteAssessmentOnBackend,
+  getUserOnBackend,
+  updateUserOnBackend,
+  deleteUserOnBackend
 } from "@/lib/api/lms-backend";
 import { readNoteFile } from "@/lib/utils/lms-helpers";
 
@@ -143,6 +150,9 @@ type MockLmsContextType = {
   createPayment: (courseId: string, amount: number, transactionId: string) => Promise<{ id: string }>;
   initiateSslCommerz: (courseId: string) => Promise<{ gateway_url: string }>;
   publishAssessment: (assessmentId: string) => Promise<void>;
+  getAssessment: (assessmentId: string) => Promise<void>;
+  updateAssessment: (assessmentId: string, payload: { title?: string; type?: string; passing_mark?: number; total_marks?: number }) => Promise<void>;
+  deleteAssessment: (assessmentId: string) => Promise<void>;
   updateAssessmentQuestion: (assessmentId: string, questionId: string, payload: { prompt?: string; options?: string[]; answer?: string }) => Promise<void>;
   deleteAssessmentQuestion: (assessmentId: string, questionId: string) => Promise<void>;
   submitAssessment: (assessmentId: string, studentName: string, answerText: string) => Promise<AssessmentSubmissionResult | null>;
@@ -156,6 +166,15 @@ type MockLmsContextType = {
   sendCustomEmail: (to: string, subject: string, body: string) => Promise<void>;
   extractNoteText: (file: File) => Promise<string>;
   createAnnouncement: (payload: { message: string; audience: string; type: string }) => Promise<void>;
+  createUser: (payload: { name: string; email: string; password: string; role: Role; department?: string }) => Promise<void>;
+  /* Enrollment admin operations */
+  getEnrollment: (enrollmentId: string) => Promise<void>;
+  updateEnrollment: (enrollmentId: string, payload: { status?: string; progressPercentage?: number }) => Promise<void>;
+  deleteEnrollment: (enrollmentId: string) => Promise<void>;
+  /* User admin operations */
+  getUser: (userId: string) => Promise<void>;
+  updateUser: (userId: string, payload: { name?: string; email?: string; role?: string; department?: string }) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
 };
 
 const MockLmsContext = createContext<MockLmsContextType | null>(null);
@@ -1013,6 +1032,86 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         ]
       }));
     },
+    async getAssessment(assessmentId) {
+      if (currentUser) {
+        await getAssessmentOnBackend(assessmentId);
+        return;
+      }
+      // Local state doesn't need special handling for view
+    },
+    async getEnrollment(enrollmentId) {
+      if (currentUser) {
+        await refreshBackendState();
+        return;
+      }
+      // local view - no-op
+    },
+    async updateAssessment(assessmentId, payload) {
+      if (currentUser) {
+        await updateAssessmentOnBackend(assessmentId, payload);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        assessments: current.assessments.map((assessment) =>
+          assessment.id === assessmentId
+            ? { ...assessment, ...payload }
+            : assessment
+        ),
+        auditEvents: [
+          createAuditEvent("Admin", "Updated assessment", assessmentId, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
+    async deleteAssessment(assessmentId) {
+      if (currentUser) {
+        await deleteAssessmentOnBackend(assessmentId);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        assessments: current.assessments.filter((assessment) => assessment.id !== assessmentId),
+        auditEvents: [
+          createAuditEvent("Admin", "Deleted assessment", assessmentId, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
+    async updateEnrollment(enrollmentId, payload) {
+      if (currentUser) {
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        enrollments: current.enrollments.map((e) => (e.id === enrollmentId ? { ...e, ...payload } : e)),
+        auditEvents: [
+          createAuditEvent("Admin", "Updated enrollment", enrollmentId, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
+    async deleteEnrollment(enrollmentId) {
+      if (currentUser) {
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        enrollments: current.enrollments.filter((e) => e.id !== enrollmentId),
+        auditEvents: [
+          createAuditEvent("Admin", "Deleted enrollment", enrollmentId, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
     async updateAssessmentQuestion(assessmentId, questionId, payload) {
       if (currentUser) {
         await updateAssessmentQuestionOnBackend(assessmentId, questionId, payload);
@@ -1123,6 +1222,47 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
 
       return localResult;
     },
+    async getUser(userId) {
+      if (currentUser) {
+        await getUserOnBackend(userId);
+        return;
+      }
+      // local - no-op for view
+    },
+    async updateUser(userId, payload) {
+      if (currentUser) {
+        await updateUserOnBackend(userId, payload);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        users: current.users.map((u) => (u.id === userId ? { ...u, ...payload } : u)),
+        auditEvents: [
+          createAuditEvent("Admin", "Updated user", userId, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
+    async deleteUser(userId) {
+      if (currentUser) {
+        await deleteUserOnBackend(userId);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        users: current.users.filter((u) => u.id !== userId),
+        enrollments: current.enrollments.filter((e) => e.studentId !== userId),
+        payments: current.payments.filter((p) => p.userId !== userId),
+        auditEvents: [
+          createAuditEvent("Admin", "Deleted user", userId, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
     async scheduleLiveClass(payload) {
       const normalizedPayload = normalizeSchedulePayload(payload);
 
@@ -1185,6 +1325,37 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
       }
 
       setState((current) => ({
+    async createUser(payload) {
+      if (currentUser) {
+        await createUserOnBackend(payload);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        users: [
+          {
+            id: uid("user"),
+            tenantId: current.branding.tenantId,
+            vendorId: current.branding.vendorId,
+            name: payload.name,
+            email: payload.email,
+            role: payload.role,
+            department: payload.department ?? null,
+            profileImageUrl: null,
+            bio: null,
+            ratingAverage: null,
+            ratingCount: 0
+          },
+          ...current.users
+        ],
+        auditEvents: [
+          createAuditEvent("Admin", "Created user", payload.name, current.branding.tenantId, current.branding.vendorId),
+          ...current.auditEvents
+        ]
+      }));
+    },
         ...current,
         notifications: [
           {

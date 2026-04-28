@@ -310,16 +310,6 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('payments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('invoice_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('stripe_payment_id')->nullable()->unique();
-            $table->decimal('amount', 10, 2)->default(0);
-            $table->string('status')->default('pending');
-            $table->timestamp('paid_at')->nullable();
-            $table->timestamps();
-        });
 
         Schema::create('seat_usages', function (Blueprint $table) {
             $table->id();
@@ -385,7 +375,6 @@ return new class extends Migration
         Schema::dropIfExists('reports');
         Schema::dropIfExists('email_logs');
         Schema::dropIfExists('seat_usages');
-        Schema::dropIfExists('payments');
         Schema::dropIfExists('tenant_subscriptions');
         Schema::dropIfExists('subscription_plans');
         Schema::dropIfExists('ai_evaluations');

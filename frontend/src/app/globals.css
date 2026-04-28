@@ -4,19 +4,19 @@
 
 @layer base {
   :root {
-    --background: 210 28% 97%;
-    --foreground: 218 33% 14%;
+    --background: 220 40% 98%;
+    --foreground: 224 38% 14%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 193 56% 39%;
+    --primary: 221 83% 56%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 36 72% 58%;
+    --accent: 266 85% 66%;
     --accent-foreground: 222 47% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -26,39 +26,39 @@
     --warning-foreground: 222 47% 11.2%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 193 56% 39%;
-    --sidebar-bg: 216 38% 13%;
+    --ring: 221 83% 56%;
+    --sidebar-bg: 226 45% 12%;
     --sidebar-fg: 210 40% 98%;
-    --lms-gold: #d89a3a;
-    --lms-navy: #182638;
+    --lms-gold: #7c5cff;
+    --lms-navy: #111b40;
   }
 
   .dark {
-    --background: 216 41% 7%;
-    --foreground: 42 35% 96%;
-    --card: 213 34% 12%;
-    --card-foreground: 42 35% 96%;
-    --popover: 213 34% 12%;
-    --popover-foreground: 42 35% 96%;
-    --primary: 38 84% 61%;
-    --primary-foreground: 217 42% 8%;
-    --secondary: 215 27% 18%;
-    --secondary-foreground: 42 35% 96%;
-    --muted: 215 24% 17%;
-    --muted-foreground: 214 18% 76%;
-    --accent: 38 88% 62%;
-    --accent-foreground: 217 42% 8%;
+    --background: 228 40% 9%;
+    --foreground: 210 40% 98%;
+    --card: 226 33% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 226 33% 14%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 221 83% 64%;
+    --primary-foreground: 228 40% 9%;
+    --secondary: 224 25% 19%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 223 22% 17%;
+    --muted-foreground: 216 20% 74%;
+    --accent: 270 92% 70%;
+    --accent-foreground: 228 40% 9%;
     --success: 151 56% 50%;
     --success-foreground: 217 42% 8%;
     --warning: 36 100% 54%;
     --warning-foreground: 217 42% 8%;
     --border: 214 24% 23%;
     --input: 214 24% 23%;
-    --ring: 38 84% 61%;
-    --sidebar-bg: 218 43% 8%;
-    --sidebar-fg: 42 35% 96%;
-    --lms-gold: #f0b84f;
-    --lms-navy: #0b1220;
+    --ring: 221 83% 64%;
+    --sidebar-bg: 228 41% 10%;
+    --sidebar-fg: 210 40% 98%;
+    --lms-gold: #9f7bff;
+    --lms-navy: #0d1330;
   }
 
   * {
@@ -76,9 +76,9 @@
 
   .dark body {
     background:
-      radial-gradient(circle at 14% -10%, rgba(240, 184, 79, 0.16), transparent 28rem),
-      radial-gradient(circle at 88% 8%, rgba(39, 120, 140, 0.14), transparent 26rem),
-      linear-gradient(135deg, hsl(218 43% 8%), hsl(216 41% 7%) 48%, hsl(210 37% 9%));
+      radial-gradient(circle at 14% -10%, rgba(124, 92, 255, 0.2), transparent 28rem),
+      radial-gradient(circle at 88% 8%, rgba(59, 130, 246, 0.16), transparent 26rem),
+      linear-gradient(135deg, hsl(228 41% 10%), hsl(226 38% 9%) 48%, hsl(230 36% 8%));
   }
 
   input,
@@ -134,8 +134,8 @@
   .dash-sidebar {
     @apply fixed inset-y-0 left-0 z-50 w-64 flex flex-col;
     background:
-      radial-gradient(circle at 20% 0%, rgba(240, 184, 79, 0.16), transparent 16rem),
-      linear-gradient(180deg, #111c2d 0%, var(--lms-navy) 54%, #080d17 100%);
+      radial-gradient(circle at 20% 0%, rgba(124, 92, 255, 0.2), transparent 16rem),
+      linear-gradient(180deg, #101a3b 0%, var(--lms-navy) 54%, #080f2a 100%);
     color: hsl(var(--sidebar-fg));
     box-shadow: 22px 0 70px -54px rgba(0,0,0,0.75);
     transition: width 0.25s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
@@ -180,9 +180,9 @@
   }
 
   .dash-nav-item.active {
-    background: linear-gradient(135deg, rgba(240,184,79,0.22), rgba(240,184,79,0.1));
+    background: linear-gradient(135deg, rgba(124,92,255,0.28), rgba(59,130,246,0.16));
     color: var(--lms-gold);
-    box-shadow: 0 0 0 1px rgba(240,184,79,0.22) inset, 0 14px 26px -22px rgba(240,184,79,0.65);
+    box-shadow: 0 0 0 1px rgba(124,92,255,0.28) inset, 0 14px 26px -22px rgba(59,130,246,0.65);
   }
 
   .dash-nav-item.active::before {
@@ -234,8 +234,8 @@
 
   .dark .dash-main {
     background:
-      radial-gradient(circle at top left, rgba(240, 184, 79, 0.12), transparent 24rem),
-      radial-gradient(circle at bottom right, rgba(39, 120, 140, 0.12), transparent 28rem),
+      radial-gradient(circle at top left, rgba(124, 92, 255, 0.16), transparent 24rem),
+      radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.14), transparent 28rem),
       hsl(var(--background));
   }
 
@@ -258,7 +258,8 @@
   .dash-page-header {
     @apply mb-6 rounded-2xl border p-5 shadow-soft;
     background:
-      radial-gradient(circle at top left, hsl(var(--accent) / 0.12), transparent 22rem),
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 22rem),
+      radial-gradient(circle at top right, hsl(var(--accent) / 0.1), transparent 22rem),
       hsl(var(--card) / 0.82);
     border-color: hsl(var(--border) / 0.76);
   }
@@ -335,7 +336,7 @@
   /* Cards */
   .card {
     @apply rounded-2xl border p-6 shadow-soft;
-    background: hsl(var(--card) / 0.9);
+    background: linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.88));
     border-color: hsl(var(--border) / 0.82);
   }
 
@@ -377,22 +378,22 @@
 
   .btn-primary {
     @apply btn text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md active:translate-y-0;
-    background: var(--lms-navy);
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   }
 
   .dark .btn-primary {
     color: hsl(var(--primary-foreground));
-    background: linear-gradient(135deg, hsl(var(--primary)), #d89a3a);
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   }
 
   .btn-primary:hover {
-    box-shadow: 0 8px 24px rgba(26, 26, 46, 0.35);
+    box-shadow: 0 12px 30px rgba(64, 97, 255, 0.32);
   }
 
   .btn-accent {
     @apply btn text-white shadow-sm hover:-translate-y-0.5;
-    background: linear-gradient(135deg, var(--lms-navy), var(--lms-gold));
-    box-shadow: 0 4px 16px rgba(255,161,10,0.25);
+    background: linear-gradient(135deg, #312e81, #7c3aed, #3b82f6);
+    box-shadow: 0 8px 24px rgba(76, 29, 149, 0.3);
   }
 
   .btn-secondary {
@@ -454,7 +455,7 @@
 
   .progress-fill {
     @apply h-full rounded-full transition-all duration-500;
-    background: linear-gradient(90deg, hsl(var(--primary)), var(--lms-gold));
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
   }
 
   /* Skeleton loading */

@@ -57,6 +57,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/courses', [CourseController::class, 'index']);
         Route::post('/courses', [CourseController::class, 'store']);
         Route::get('/courses/{course}', [CourseController::class, 'show']);
+        Route::get('/courses/{course}/students', [CourseController::class, 'students']);
+        Route::patch('/courses/{course}/assessment-gate', [CourseController::class, 'toggleAssessmentGate']);
+        Route::post('/courses/{course}/assign-teacher', [AdminCourseManagementController::class, 'assignTeachers']);
         Route::post('/courses/{course}/publish', [CourseController::class, 'publish']);
         Route::post('/courses/{course}/modules', [CourseController::class, 'storeModule']);
         Route::put('/courses/{course}/modules/{module}', [CourseController::class, 'updateModule']);
@@ -71,6 +74,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
         Route::get('/student/my-courses', [EnrollmentController::class, 'myCourses']);
+        Route::get('/student/courses', [EnrollmentController::class, 'myCourses']);
         Route::get('/student/my-submissions', [EnrollmentController::class, 'mySubmissions']);
         Route::get('/student/live-classes', [LiveClassController::class, 'index']);
 
@@ -87,6 +91,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments/generate', [AssessmentController::class, 'generate']);
+        Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);
+        Route::put('/assessments/{assessment}', [AssessmentController::class, 'update']);
+        Route::delete('/assessments/{assessment}', [AssessmentController::class, 'destroy']);
         Route::post('/assessments/{assessment}/publish', [AssessmentController::class, 'publish']);
         Route::put('/assessments/{assessment}/questions/{question}', [AssessmentController::class, 'updateQuestion']);
         Route::delete('/assessments/{assessment}/questions/{question}', [AssessmentController::class, 'deleteQuestion']);
@@ -129,6 +136,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/audit-events', [AuditController::class, 'index']);
         // Admin user management
         Route::post('/users', [UserManagementController::class, 'store']);
+        Route::get('/admin/users/{user}', [UserManagementController::class, 'show']);
+        Route::put('/admin/users/{user}', [UserManagementController::class, 'update']);
         Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
         // Admin course management

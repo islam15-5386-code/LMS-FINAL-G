@@ -27,6 +27,7 @@ class Course extends Model
         'published_at',
         'thumbnail_url',
         'enrollment_count',
+        'assessment_gate_enabled',
     ];
 
     protected function casts(): array
@@ -38,6 +39,7 @@ class Course extends Model
             'what_you_will_learn' => 'array',
             'requirements' => 'array',
             'target_audience' => 'array',
+            'assessment_gate_enabled' => 'boolean',
         ];
     }
 

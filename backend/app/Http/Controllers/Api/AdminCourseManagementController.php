@@ -87,20 +87,38 @@ class AdminCourseManagementController extends Controller
      */
     public function assignTeachers(Request $request, Course $course): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        /** @var User $user */
+        $user = $request->user();
+
+        // Authorize: Admin or the course owner
+        if ($user->role !== 'admin' && $course->teacher_id !== $user->id) {
+            abort(403, 'Only admins or the course owner can assign teachers.');
+        }
 
         $validated = $request->validate([
-            'teacher_ids' => 'required|array',
-            'teacher_ids.*' => 'required|integer|exists:users,id',
+            'teacher_ids' => 'nullable|array',
+            'teacher_ids.*' => 'integer|exists:users,id',
+            'teacher_id' => 'nullable|integer|exists:users,id',
         ]);
 
+        $teacherIds = $validated['teacher_ids'] ?? [];
+        if ($request->filled('teacher_id')) {
+            $teacherIds[] = $request->input('teacher_id');
+        }
+
+        $teacherIds = array_unique($teacherIds);
+
+        if (empty($teacherIds)) {
+            return response()->json(['message' => 'No teachers selected.'], 422);
+        }
+
         $teachers = User::query()
-            ->whereIn('id', $validated['teacher_ids'])
+            ->whereIn('id', $teacherIds)
             ->where('role', 'teacher')
             ->get();
 
-        if ($teachers->count() !== count($validated['teacher_ids'])) {
-            return response()->json(['message' => 'Some selected users are not teachers.'], 422);
+        if ($teachers->count() === 0) {
+            return response()->json(['message' => 'Selected users are not teachers.'], 422);
         }
 
         // Check if all teachers belong to the same tenant
@@ -142,23 +160,56 @@ class AdminCourseManagementController extends Controller
      */
     public function courseStudents(Request $request, Course $course): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        /** @var User $user */
+        $user = $request->user();
 
-        $enrollments = $course->enrollments()
-            ->with('student')
-            ->latest()
+        // Authorize: Admin or assigned teacher
+        if ($user->role === 'teacher') {
+            $isAssigned = $course->teachers()->where('users.id', $user->id)->exists();
+            if (!$isAssigned && $course->teacher_id !== $user->id) {
+                abort(403, 'You are not assigned to this course.');
+            }
+        } elseif ($user->role !== 'admin') {
+            abort(403, 'Access denied.');
+        }
+
+        // Reuse the logic from CourseController if possible, but for now we'll inline it to be safe
+        $enrolledUserIds = $course->enrollments()
+            ->where('status', '!=', 'removed')
+            ->pluck('student_id')
+            ->toArray();
+
+        $paidUserIds = \App\Models\Payment::query()
+            ->where('course_id', $course->id)
+            ->where('status', 'paid')
+            ->pluck('user_id')
+            ->toArray();
+
+        $allStudentIds = array_unique(array_merge($enrolledUserIds, $paidUserIds));
+
+        $students = User::query()
+            ->whereIn('id', $allStudentIds)
             ->get()
-            ->map(fn (Enrollment $enrollment) => [
-                'id' => $enrollment->id,
-                'student_id' => $enrollment->student->id,
-                'student_name' => $enrollment->student->name,
-                'student_email' => $enrollment->student->email,
-                'status' => $enrollment->status,
-                'progress' => $enrollment->progress_percentage,
-                'enrolled_at' => $enrollment->enrolled_at,
-            ]);
+            ->map(function (User $student) use ($course) {
+                $enrollment = $course->enrollments()->where('student_id', $student->id)->first();
+                $payment = \App\Models\Payment::query()
+                    ->where('course_id', $course->id)
+                    ->where('user_id', $student->id)
+                    ->where('status', 'paid')
+                    ->first();
 
-        return response()->json(['data' => $enrollments]);
+                return [
+                    'id' => $enrollment?->id ?? $student->id,
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'student_email' => $student->email,
+                    'status' => $enrollment ? $enrollment->status : ($payment ? 'paid' : 'pending'),
+                    'progress' => $enrollment ? $enrollment->progress_percentage : 0,
+                    'enrolled_at' => $enrollment ? $enrollment->enrolled_at : ($payment ? $payment->created_at : null),
+                ];
+            });
+
+        return response()->json(['data' => $students]);
     }
 
     /**

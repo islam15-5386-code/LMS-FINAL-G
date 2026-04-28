@@ -186,13 +186,13 @@ function getRoleLabel(role?: string) {
 }
 
 function getRoleColor(role?: string) {
-  if (role === "teacher") return "#0f766e"; // teal
-  if (role === "student") return "#7c3aed"; // purple
-  return "#E8A020"; // gold for admin
+  if (role === "teacher") return "#2563eb";
+  if (role === "student") return "#8b5cf6";
+  return "#4f46e5";
 }
 
 function SidebarItem({ href, label, icon, collapsed = false }: NavItem & { collapsed?: boolean }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const active =
     href === "/"
       ? pathname === "/"
@@ -212,6 +212,57 @@ type DashboardLayoutProps = {
   role?: "admin" | "teacher" | "student";
 };
 
+function RoleUiRibbon({
+  role,
+  usersCount,
+  coursesCount,
+  assessmentsCount,
+  liveClassesCount
+}: {
+  role: "teacher" | "student";
+  usersCount: number;
+  coursesCount: number;
+  assessmentsCount: number;
+  liveClassesCount: number;
+}) {
+  const palette = role === "teacher"
+    ? {
+        title: "Teacher Workspace",
+        subtitle: "Aligned with the admin dashboard system for consistent navigation, cards, and actions.",
+        bars: [
+          { label: "Courses", value: coursesCount, color: "from-[#1A1A2E] to-[#E8A020]" },
+          { label: "Assessments", value: assessmentsCount, color: "from-blue-500 to-cyan-500" },
+          { label: "Live Classes", value: liveClassesCount, color: "from-purple-500 to-pink-500" }
+        ]
+      }
+    : {
+        title: "Student Workspace",
+        subtitle: "Aligned with the admin dashboard system for consistent navigation, cards, and progress visibility.",
+        bars: [
+          { label: "Courses", value: coursesCount, color: "from-[#1A1A2E] to-[#E8A020]" },
+          { label: "Assessments", value: assessmentsCount, color: "from-blue-500 to-cyan-500" },
+          { label: "Active Learners", value: usersCount, color: "from-purple-500 to-pink-500" }
+        ]
+      };
+
+  return (
+    <div className="mb-6 rounded-2xl border border-border/70 bg-gradient-to-br from-card to-card/80 p-5 shadow-soft">
+      <div className="mb-4">
+        <h2 className="font-serif text-xl text-foreground">{palette.title}</h2>
+        <p className="text-sm text-muted-foreground mt-1">{palette.subtitle}</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {palette.bars.map((item) => (
+          <div key={item.label} className="rounded-xl border border-border/70 bg-background/70 p-3">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+            <p className={`mt-2 text-2xl font-extrabold bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}>{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const router = useRouter();
   const { authReady, currentUser, isAuthenticated, signOut, state } = useMockLms();
@@ -221,7 +272,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const topProfileRef = useRef<HTMLDivElement | null>(null);
 
   // Close sidebar on route change (mobile)
@@ -389,7 +440,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside className={`dash-sidebar${sidebarOpen ? " open" : ""}${sidebarCollapsed ? " collapsed" : ""}`}>
         {/* Logo */}
-        <div className="dash-sidebar-header">
+        <Link href="/" className="dash-sidebar-header">
           <div className="dash-sidebar-logo">SL</div>
           <div className="min-w-0">
             <p className="font-serif text-base font-semibold text-white leading-none truncate">Smart LMS</p>
@@ -412,10 +463,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           >
             {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
-        </div>
+        </Link>
 
         {/* User mini-card */}
-        <div className="mx-3 mt-3 rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <div className="mx-3 mt-3 rounded-2xl border border-white/10 px-4 py-3" style={{ background: "rgba(255,255,255,0.08)" }}>
           <div className="flex items-center gap-3">
             <div className="avatar h-9 w-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
               {avatarInitials}
@@ -431,7 +482,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <nav className="dash-sidebar-nav">
           <div className="dash-nav-section">
             <p className="dash-nav-section-label">General</p>
-            <SidebarItem href={roleHome} label="Home" icon={<Home className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+            <SidebarItem href="/" label="Home" icon={<Home className="w-4 h-4" />} collapsed={sidebarCollapsed} />
           </div>
 
           {navSections.map((section) => (
@@ -492,8 +543,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <input type="search" placeholder="Search courses, learners, reports..." />
             </label>
             <Link
-              href={roleHome}
-              className="hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              href="/"
+              className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
             >
               <Home className="w-4 h-4" />
               <span>Home</span>
@@ -560,6 +611,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         {/* Page content */}
         <main className="dash-page">
+          {effectiveRole !== "admin" ? (
+            <RoleUiRibbon
+              role={effectiveRole}
+              usersCount={state.users.length}
+              coursesCount={state.courses.length}
+              assessmentsCount={state.assessments.length}
+              liveClassesCount={state.liveClasses.length}
+            />
+          ) : null}
           {children}
         </main>
       </div>

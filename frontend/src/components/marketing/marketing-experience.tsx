@@ -8,6 +8,8 @@ import {
   Award,
   BookOpen,
   Bot,
+  ChevronLeft,
+  ChevronRight,
   Building2,
   CalendarDays,
   Check,
@@ -28,7 +30,7 @@ import {
   ClipboardCheck,
   PenSquare
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   planMatrix,
@@ -108,7 +110,7 @@ function AuthExperience({ slug }: { slug: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const nextPath = searchParams.get("next");
+  const nextPath = searchParams?.get("next");
 
   return (
     <div className={`${pageFrame} grid gap-6 pb-20 pt-10 lg:grid-cols-[1.05fr_0.95fr]`}>
@@ -226,7 +228,7 @@ function PricingExperience() {
       <Section title="Pricing tier matrix" subtitle="The SRS pricing tiers are implemented directly in the frontend so plan messaging and seat economics can be reviewed in context.">
         <div className="grid gap-4 xl:grid-cols-3">
           {(Object.keys(planMatrix) as Array<keyof typeof planMatrix>).map((plan) => (
-            <div key={plan} className={`overflow-hidden rounded-[1.8rem] border p-6 ${state.billing.plan === plan ? "border-[#E8A020]/25 bg-[#1A1A2E] text-white shadow-glow" : "border-foreground/10 bg-white shadow-soft dark:border-white/8 dark:bg-[#13212a]"}`}>
+            <div key={plan} className={`overflow-hidden rounded-[1.8rem] border p-6 ${state.billing.plan === plan ? "border-[#7C5CFF]/30 bg-[#111B40] text-white shadow-glow" : "border-foreground/10 bg-white shadow-soft dark:border-white/8 dark:bg-[#13212a]"}`}>
               <p className="text-pretty-wrap font-serif text-[clamp(2.2rem,2.2vw,3rem)] leading-none">{plan}</p>
               <p className={`text-pretty-wrap mt-3 text-sm leading-6 ${state.billing.plan === plan ? "text-white/80" : "text-muted-foreground"}`}>
                 ${planMatrix[plan].price}/month · {planMatrix[plan].seatLimit} active students
@@ -424,6 +426,8 @@ export function HomeExperience() {
   const { mounted, theme, toggleTheme } = useThemeMode();
   const [homeCourses, setHomeCourses] = useState(state.courses);
   const [publicLoadFailed, setPublicLoadFailed] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [homeSearch, setHomeSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -527,13 +531,566 @@ export function HomeExperience() {
     { label: "Course lessons", value: `${totalLessons}+` }
   ];
 
+  const publishedFeatured = featuredCourses.filter((course) => course.status === "published");
+  const categoryTabs = ["All", ...categoryChips.filter(Boolean)].slice(0, 9);
+
+  const filteredByCategory =
+    activeCategory === "All"
+      ? publishedFeatured
+      : publishedFeatured.filter((course) => course.category === activeCategory);
+
+  const filteredBySearch = homeSearch.trim()
+    ? filteredByCategory.filter((course) => {
+        const query = homeSearch.toLowerCase().trim();
+        return `${course.title} ${course.category} ${course.description}`.toLowerCase().includes(query);
+      })
+    : filteredByCategory;
+
+  useEffect(() => {
+    if (!categoryTabs.includes(activeCategory)) {
+      setActiveCategory("All");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryTabs.join("|")]);
+
+  function courseHref(course: (typeof coursesForHome)[number]) {
+    const slug = Object.entries(catalogSlugMap).find(([, value]) => value === course.id)?.[0] ?? course.id;
+    return `/catalog/${slug}`;
+  }
+
+  function CourseCard({ course, imageSrc }: { course: (typeof coursesForHome)[number]; imageSrc: string }) {
+    return (
+      <Link
+        href={courseHref(course)}
+        className="group w-[250px] shrink-0 snap-start overflow-hidden rounded-[14px] border border-foreground/10 bg-white shadow-soft transition hover:-translate-y-1 hover:border-foreground/20 dark:border-white/10 dark:bg-[#0b1220]"
+      >
+        <div className="relative h-[140px] w-full overflow-hidden bg-muted">
+          <Image
+            src={imageSrc}
+            alt={course.title}
+            fill
+            className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            sizes="250px"
+          />
+        </div>
+        <div className="space-y-2 p-4">
+          <p className="line-clamp-2 text-sm font-bold leading-5 text-foreground">{course.title}</p>
+          <p className="text-xs text-muted-foreground">{course.category}</p>
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-sm font-extrabold text-foreground">${course.price}</p>
+            <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+              {course.modules.length} modules
+            </span>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  function CourseRow({
+    title,
+    subtitle,
+    courses,
+    accent
+  }: {
+    title: string;
+    subtitle: string;
+    courses: Array<(typeof coursesForHome)[number]>;
+    accent?: "dark";
+  }) {
+    const rowImages = courseImages;
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+    const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+      const el = scrollerRef.current;
+      if (!el) return;
+
+      const update = () => {
+        const maxScrollLeft = el.scrollWidth - el.clientWidth;
+        setCanScrollLeft(el.scrollLeft > 4);
+        setCanScrollRight(el.scrollLeft < maxScrollLeft - 4);
+      };
+
+      update();
+      el.addEventListener("scroll", update, { passive: true });
+      window.addEventListener("resize", update);
+      return () => {
+        el.removeEventListener("scroll", update);
+        window.removeEventListener("resize", update);
+      };
+    }, [courses.length]);
+
+    const scrollByCards = (direction: "left" | "right") => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const amount = Math.max(320, Math.floor(el.clientWidth * 0.85));
+      el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
+    };
+
+    return (
+      <section className={accent === "dark" ? "bg-[#111827] text-white" : "bg-background text-foreground"}>
+        <div className={`${pageFrame} py-10`}>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className={`text-2xl font-extrabold tracking-[-0.03em] ${accent === "dark" ? "text-white" : "text-foreground"}`}>
+                {title}
+              </h2>
+              <p className={`mt-2 text-sm ${accent === "dark" ? "text-white/70" : "text-muted-foreground"}`}>{subtitle}</p>
+            </div>
+            <Link
+              href="/catalog"
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                accent === "dark"
+                  ? "border border-white/20 text-white hover:bg-white/10"
+                  : "border border-foreground/15 hover:border-foreground/30"
+              }`}
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="relative mt-6">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-[linear-gradient(to_right,rgba(255,255,255,0.95),rgba(255,255,255,0))] dark:bg-[linear-gradient(to_right,rgba(11,18,32,0.95),rgba(11,18,32,0))]" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-[linear-gradient(to_left,rgba(255,255,255,0.95),rgba(255,255,255,0))] dark:bg-[linear-gradient(to_left,rgba(11,18,32,0.95),rgba(11,18,32,0))]" />
+
+            <button
+              type="button"
+              aria-label="Scroll left"
+              onClick={() => scrollByCards("left")}
+              disabled={!canScrollLeft}
+              className={`absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white/90 p-2 shadow-soft backdrop-blur transition hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:border-white/10 dark:bg-[#0b1220]/80 dark:hover:bg-[#0b1220] ${
+                canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Scroll right"
+              onClick={() => scrollByCards("right")}
+              disabled={!canScrollRight}
+              className={`absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white/90 p-2 shadow-soft backdrop-blur transition hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:border-white/10 dark:bg-[#0b1220]/80 dark:hover:bg-[#0b1220] ${
+                canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            <div
+              ref={scrollerRef}
+              className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+            {courses.slice(0, 12).map((course, index) => (
+              <CourseCard key={course.id} course={course} imageSrc={rowImages[index % rowImages.length]} />
+            ))}
+          </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function UdemyStyleHome() {
+    return (
+      <div className="text-foreground">
+        <div className="border-b border-foreground/10 bg-emerald-50 py-2 text-xs font-semibold text-emerald-900 dark:border-white/10 dark:bg-emerald-500/10 dark:text-emerald-100">
+          <div className={`${pageFrame} flex flex-wrap items-center justify-center gap-2`}>
+            <span className="rounded-full bg-white/70 px-3 py-1 dark:bg-white/10">New</span>
+            <span>Limited-time learning boost: explore premium courses and live classes.</span>
+            <Link href="/catalog" className="underline underline-offset-2">Browse now</Link>
+          </div>
+        </div>
+
+        <section className="bg-background">
+          <div className={`${pageFrame} py-8`}>
+            <div className="relative overflow-hidden rounded-[18px] border border-foreground/10 bg-[linear-gradient(120deg,#f5f7ff,#ffffff)] shadow-soft dark:border-white/10 dark:bg-[linear-gradient(120deg,#0b1220,#070b12)]">
+              <div className="grid gap-8 p-6 md:p-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+                <div className="max-w-xl">
+                  <h1 className="text-[clamp(2.4rem,3.6vw,3.6rem)] font-extrabold tracking-[-0.04em] leading-tight">
+                    Jump into learning for less
+                  </h1>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    Build skills with courses, live classes, and assessments—right inside your Smart LMS demo.
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link
+                      href="/catalog"
+                      className="rounded-[12px] bg-gradient-to-r from-[#7C5CFF] to-[#4F46E5] px-5 py-3 text-sm font-bold text-white shadow-md transition transform hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#7C5CFF]/30"
+                    >
+                      Explore catalog
+                    </Link>
+                    <Link
+                      href={primaryWorkspaceHref}
+                      className="rounded-[12px] border border-foreground/15 px-5 py-3 text-sm font-bold hover:border-foreground/30 transition focus:outline-none focus:ring-2 focus:ring-[#7C5CFF]/20"
+                    >
+                      {isAuthenticated ? "Open dashboard" : "Sign up"}
+                    </Link>
+                    {!isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={resetDemo}
+                        className="rounded-[12px] border border-foreground/15 px-5 py-3 text-sm font-bold hover:border-foreground/30 transition focus:outline-none focus:ring-2 focus:ring-[#7C5CFF]/20"
+                      >
+                        Reset demo
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-3 gap-3">
+                    {stats.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-[14px] border border-foreground/10 bg-white p-5 shadow-soft transition-transform hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/5"
+                      >
+                        <p className="text-3xl font-extrabold">{item.value}</p>
+                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative min-h-[260px] overflow-hidden rounded-[16px] bg-muted group shadow-lg">
+                  <Image
+                    src={courseImages[2]}
+                    alt="Learning hero"
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                  />
+                  <div className="absolute left-5 top-5 max-w-[320px] rounded-[14px] border border-white/30 bg-white/95 p-4 shadow-soft backdrop-blur-sm dark:border-white/10 dark:bg-[#0b1220]/85">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Featured</p>
+                    <p className="mt-2 text-sm font-extrabold">{highlightCourses[0]?.title ?? "Featured course"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Start learning today—your next skill is one click away.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-foreground/10 bg-white/60 px-6 py-4 dark:border-white/10 dark:bg-white/5 md:px-10">
+                <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Search courses</p>
+                    <input
+                      value={homeSearch}
+                      onChange={(e) => setHomeSearch(e.target.value)}
+                      placeholder="Search for anything (title, category, description)…"
+                      className="mt-2 w-full rounded-[12px] border border-foreground/15 bg-background px-4 py-3 text-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-[#7C5CFF]/20 dark:border-white/10"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {categoryTabs.map((tab) => {
+                        const active = activeCategory === tab;
+                        return (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setActiveCategory(tab)}
+                            className={`relative shrink-0 px-1 py-2 text-sm font-bold transition ${
+                              active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <span className="px-2">{tab}</span>
+                            <span
+                              className={`absolute inset-x-0 -bottom-[2px] mx-2 h-[3px] rounded-full transition ${
+                                active ? "bg-foreground opacity-100" : "bg-foreground opacity-0"
+                              }`}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="h-px w-full bg-foreground/10 dark:bg-white/10" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <CourseRow
+          title="Learn with curated tracks"
+          subtitle="A Udemy-style horizontal row, powered by your real course data."
+          courses={filteredBySearch.length ? filteredBySearch : publishedFeatured}
+        />
+
+        <section className="bg-background">
+          <div className={`${pageFrame} py-10`}>
+            <div className="overflow-hidden rounded-[18px] bg-[#0f172a] text-white shadow-glow">
+              <div className="grid gap-8 p-8 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+                <div>
+                  <h2 className="text-[clamp(1.8rem,3vw,2.5rem)] font-extrabold tracking-[-0.04em]">
+                    Reimagine your career in the AI era
+                  </h2>
+                  <p className="mt-3 max-w-xl text-sm leading-7 text-white/70">
+                    Discover courses, practice with assessments, and join live classes—then jump straight into role-based workspaces.
+                  </p>
+                  <div className="mt-5 grid gap-2 text-sm text-white/80 sm:grid-cols-2">
+                    <p className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3">Learn and explore</p>
+                    <p className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3">Prep for certification</p>
+                    <p className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3">Practice with AI coaching</p>
+                    <p className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3">Advance your career</p>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link href="/catalog" className="rounded-[12px] bg-white px-5 py-3 text-sm font-bold text-[#0f172a]">
+                      Learn more
+                    </Link>
+                    <Link href={liveWorkspaceHref} className="rounded-[12px] border border-white/15 px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
+                      Open live classes
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className={`relative overflow-hidden rounded-[16px] ${i === 1 ? "col-span-2 row-span-2" : ""} bg-white/5`}>
+                      <Image src={courseImages[i % courseImages.length]} alt="Promo visual" width={900} height={700} className="h-full w-full object-cover opacity-90" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-background">
+          <div className={`${pageFrame} py-10`}>
+            <h2 className="text-2xl font-extrabold tracking-[-0.03em]">Skills to transform your career and life</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Pick a category to see popular published courses.</p>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {(filteredBySearch.length ? filteredBySearch : publishedFeatured).slice(0, 8).map((course, index) => (
+                <Link
+                  key={course.id}
+                  href={courseHref(course)}
+                  className="group overflow-hidden rounded-[16px] border border-foreground/10 bg-white shadow-soft transition hover:-translate-y-1 hover:border-foreground/20 dark:border-white/10 dark:bg-[#0b1220]"
+                >
+                  <div className="relative h-[140px]">
+                    <Image
+                      src={courseImages[index % courseImages.length]}
+                      alt={course.title}
+                      fill
+                      className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                      sizes="(max-width: 1024px) 50vw, 25vw"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <p className="line-clamp-2 text-sm font-bold">{course.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{course.category}</p>
+                    <p className="mt-3 text-sm font-extrabold">${course.price}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-background">
+          <div className={`${pageFrame} py-12`}>
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Trusted by teams and learners
+            </p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              {["Volks", "Samsung", "Cisco", "Vimeo", "P&G", "HP", "Citi", "Ericsson"].map((name) => (
+                <div key={name} className="rounded-full border border-foreground/10 bg-white/60 px-5 py-2 text-xs font-bold text-muted-foreground dark:border-white/10 dark:bg-white/5">
+                  {name}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10">
+              <h3 className="text-xl font-extrabold tracking-[-0.02em]">Join others transforming their lives through learning</h3>
+              <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                {[
+                  { name: "Student A", text: "Everything is connected—catalog, lessons, live classes, and certificates in one place." },
+                  { name: "Teacher B", text: "Course authoring + uploads + AI assessments feel like one smooth workflow." },
+                  { name: "Admin C", text: "Billing, compliance reports, and audit logs are easy to reach from the same navigation." }
+                ].map((t) => (
+                  <div key={t.name} className="rounded-[16px] border border-foreground/10 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-[#0b1220]">
+                    <p className="text-sm leading-7 text-muted-foreground">“{t.text}”</p>
+                    <div className="mt-5 flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-full bg-muted text-sm font-extrabold text-foreground">
+                        {t.name.slice(0, 1)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold">{t.name}</p>
+                        <p className="text-xs text-muted-foreground">Smart LMS demo</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#0f172a] text-white">
+          <div className={`${pageFrame} py-14`}>
+            <div className="grid gap-10 lg:grid-cols-4">
+              {[
+                { title: "In-demand careers", items: ["Data analyst", "Full stack dev", "Cloud engineer", "Project manager", "AI career accelerator"] },
+                { title: "Web development", items: ["JavaScript", "React", "Next.js", "Laravel", "SQL"] },
+                { title: "IT certifications", items: ["AWS", "Azure", "Google Cloud", "Kubernetes", "Security+ (demo)"] },
+                { title: "Leadership", items: ["Management", "Productivity", "Communication", "Project management", "Emotional intelligence"] }
+              ].map((col) => (
+                <div key={col.title}>
+                  <p className="text-sm font-extrabold">{col.title}</p>
+                  <ul className="mt-4 space-y-2 text-sm text-white/70">
+                    {col.items.map((item) => (
+                      <li key={item}>
+                        <Link href="/catalog" className="hover:text-white">{item}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs text-white/60">
+              <p>© 2026 Smart LMS</p>
+              <div className="flex gap-5">
+                <Link href="/privacy" className="hover:text-white">Privacy</Link>
+                <Link href="/terms" className="hover:text-white">Terms</Link>
+                <Link href="/catalog" className="hover:text-white">Catalog</Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {publicLoadFailed ? (
+          <div className={`${pageFrame} pb-12`}>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100">
+              Public course sync failed. Showing local demo course data.
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return <UdemyStyleHome />;
+
+  if (false) return (
+    <div className="text-foreground">
+      <section className="relative overflow-hidden rounded-b-[2.75rem] bg-[radial-gradient(circle_at_top_left,#1e2a66_0%,#121a45_58%,#0c1435_100%)] text-white shadow-glow">
+        <div className={`${pageFrame} grid gap-8 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center`}>
+          <div>
+            <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em]">Modern LMS</p>
+            <h1 className="mt-5 text-[clamp(2.4rem,5vw,4.8rem)] font-extrabold leading-[1.02] tracking-[-0.05em]">
+              Beautiful learning
+              <span className="block text-indigo-200">experience for students and teams.</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-white/85">
+              Build courses, run live classes, evaluate assessments, issue certificates, and manage billing from one polished platform.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/catalog" className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#111b40]">Explore Courses</Link>
+              <Link href={liveWorkspaceHref} className="rounded-xl border border-white/25 px-6 py-3 text-sm font-bold">Live Classes</Link>
+              {!isAuthenticated ? (
+                <button type="button" onClick={resetDemo} className="rounded-xl border border-white/25 px-6 py-3 text-sm font-bold">Reset Demo</button>
+              ) : null}
+            </div>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {stats.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                  <p className="text-2xl font-extrabold text-indigo-200">{item.value}</p>
+                  <p className="text-xs text-white/75">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-[1.8rem] border border-white/15 bg-white/10 p-4 backdrop-blur">
+            <Image src={courseImages[0]} alt="Hero class visual" width={920} height={560} className="h-64 w-full rounded-[1.2rem] object-cover" priority />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-white/10 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-white/70">Top Course</p>
+                <p className="mt-2 text-sm font-semibold">{highlightCourses[0]?.title ?? "Course"}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-white/70">Plan</p>
+                <p className="mt-2 text-sm font-semibold">{state.billing.plan} · {activeLearners} learners</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className="bg-card py-16">
+        <div className={pageFrame}>
+          <h2 className="text-[clamp(2rem,3.2vw,3rem)] font-bold tracking-[-0.05em]">All-in-one learning platform</h2>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {[
+              ["AI Assessments", "Generate quizzes, review drafts, and evaluate essays faster.", <Bot key="b" className="h-5 w-5" />],
+              ["Live Classes", "Schedule, host, and record interactive classroom sessions.", <Video key="v" className="h-5 w-5" />],
+              ["Certificates & Compliance", "Track completion and issue verified certificates.", <Award key="a" className="h-5 w-5" />]
+            ].map(([title, body, icon]) => (
+              <div key={String(title)} className="rounded-[1.6rem] border border-border/70 bg-card p-6 shadow-soft">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">{icon}</span>
+                <h3 className="mt-4 text-xl font-bold">{title}</h3>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="courses" className="bg-card py-16">
+        <div className={pageFrame}>
+          <div className="mb-7 flex items-end justify-between">
+            <h2 className="text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-[-0.05em]">Popular courses</h2>
+            <Link href="/catalog" className="rounded-xl border border-primary/30 px-4 py-2 text-sm font-bold text-primary">View all</Link>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-3">
+            {highlightCourses.map((course, index) => {
+              const slug = Object.entries(catalogSlugMap).find(([, value]) => value === course.id)?.[0] ?? course.id;
+              return (
+                <Link key={course.id} href={`/catalog/${slug}`} className="overflow-hidden rounded-[1.6rem] border border-border/70 bg-card shadow-soft transition hover:-translate-y-1">
+                  <Image src={courseImages[index % courseImages.length]} alt={course.title} width={760} height={420} className="h-44 w-full object-cover" />
+                  <div className="p-5">
+                    <h3 className="text-xl font-bold">{course.title}</h3>
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{course.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="bg-[#131d49] py-16 text-white">
+        <div className={pageFrame}>
+          <h2 className="text-center text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-[-0.05em]">Simple pricing for growth</h2>
+          <div className="mt-9 grid gap-5 xl:grid-cols-3">
+            {pricingPlans.map(([planName, plan], index) => (
+              <div key={planName} className={`rounded-[1.7rem] border p-7 ${index === 1 ? "border-indigo-300/60 bg-white/10" : "border-white/20 bg-white/5"}`}>
+                <h3 className="text-3xl font-bold">{planName}</h3>
+                <p className="mt-4 text-5xl font-extrabold">${plan.price}<span className="text-base font-medium text-white/70">/mo</span></p>
+                <ul className="mt-5 space-y-2 text-sm text-white/80">
+                  <li>{plan.seatLimit} seats</li>
+                  <li>{plan.liveLimit > 0 ? `${plan.liveLimit} live participants` : "Live class add-on"}</li>
+                  <li>${plan.overagePerSeat} overage per seat</li>
+                </ul>
+                <Link href={pricingAction.href} className={`mt-6 inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-sm font-bold ${index === 1 ? "bg-indigo-500 text-white" : "border border-white/35"}`}>
+                  {pricingAction.label}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+
   return (
     <div className="bg-background text-foreground">
       <section className="border-b border-foreground/5 bg-card">
         <div className={`${pageFrame} flex flex-wrap items-center justify-between gap-5 py-5`}>
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#b9852b] text-white shadow-soft">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#4F46E5] text-white shadow-soft">
                 <span className="font-serif text-lg font-semibold">{state.branding.logoText || "SL"}</span>
               </div>
               <div>
@@ -578,7 +1135,7 @@ export function HomeExperience() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm font-semibold text-foreground transition hover:border-[#E8A020]/60 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A020]/45 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm font-semibold text-foreground transition hover:border-[#7C5CFF]/60 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C5CFF]/45 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
               aria-label={mounted ? `Switch to ${theme === "light" ? "dark" : "light"} mode` : "Toggle theme"}
             >
               {mounted && theme === "dark" ? <SunMedium className="h-4 w-4 text-[#ffd166]" /> : <MoonStar className="h-4 w-4" />}
@@ -588,7 +1145,7 @@ export function HomeExperience() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,#1e2034_0%,#1a1c30_52%,#171929_100%)] text-white">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,#1B2556_0%,#131B44_52%,#0D1435_100%)] text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(201,146,45,0.22),transparent_18%),radial-gradient(circle_at_92%_90%,rgba(20,115,135,0.16),transparent_20%),radial-gradient(circle_at_70%_38%,rgba(255,255,255,0.08),transparent_20%)]" />
         <div className={`${pageFrame} relative grid gap-12 py-16 lg:grid-cols-[1fr_0.9fr] lg:items-center`}>
           <div className="max-w-2xl space-y-6">
@@ -637,7 +1194,7 @@ export function HomeExperience() {
                   </div>
                   <div className="flex flex-col justify-between rounded-[1.3rem] bg-[#f5f7fb] p-5 dark:bg-white/5">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b9852b]">Top course</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B7BFF]">Top course</p>
                       <h2 className="mt-3 font-sans text-2xl font-bold leading-tight">{highlightCourses[0]?.title ?? "Course title"}</h2>
                       <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-white/70">
                         {highlightCourses[0]?.description ?? "Premium course card connected to your live project data."}
@@ -688,7 +1245,7 @@ export function HomeExperience() {
         </div>
       </section>
 
-      <section id="features" className="bg-[#1d1f33] py-12 text-white dark:bg-[#1d1f33]">
+      <section id="features" className="bg-[#151E47] py-12 text-white dark:bg-[#151E47]">
         <div className={`${pageFrame} grid gap-5 md:grid-cols-3`}>
           {[
             ["Explore new skills", "Access course, module, lesson, and catalog workflows from the same learning system.", <BookOpen key="book" className="h-5 w-5" />],
@@ -696,7 +1253,7 @@ export function HomeExperience() {
             ["Learn from the best", "AI assessments, live classes, and teacher tools are already routed inside your project.", <Bot key="bot" className="h-5 w-5" />]
           ].map(([title, body, icon]) => (
             <div key={String(title)} className="rounded-[1.8rem] border border-white/8 bg-white/5 p-6 shadow-soft backdrop-blur">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#b9852b]/15 text-[#ddb364]">{icon}</span>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#7C5CFF]/20 text-[#9F8BFF]">{icon}</span>
               <h3 className="mt-6 text-xl font-bold tracking-[-0.03em]">{title}</h3>
               <p className="mt-3 text-sm leading-7 text-white/68">{body}</p>
             </div>
@@ -714,7 +1271,7 @@ export function HomeExperience() {
               The homepage now feels more like a real premium learning platform: stronger hierarchy, cleaner rhythm, richer cards, and less cheap-looking filler.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/catalog" className="rounded-lg border border-[#b9852b] px-5 py-3 text-sm font-bold text-[#c8922d] transition hover:bg-[#b9852b] hover:text-white">
+              <Link href="/catalog" className="rounded-lg border border-[#4F46E5] px-5 py-3 text-sm font-bold text-[#4F46E5] transition hover:bg-[#4F46E5] hover:text-white">
                 Browse courses
               </Link>
             </div>
@@ -866,13 +1423,13 @@ export function HomeExperience() {
         </div>
       </section>
 
-      <section id="pricing" className="bg-[#1b1d30] py-16 text-white dark:bg-[#1b1d30]">
+      <section id="pricing" className="bg-[#141B42] py-16 text-white dark:bg-[#141B42]">
         <div className={pageFrame}>
           <div className="text-center">
             <h2 className="text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-[-0.05em]">Plans for you or your team</h2>
           </div>
           <div className="mx-auto mt-6 flex w-full max-w-[300px] items-center rounded-full bg-white p-2 shadow-soft dark:bg-white/10">
-            <div className="flex-1 rounded-full bg-[#b9852b] px-4 py-2 text-center text-sm font-bold text-white">Individual</div>
+            <div className="flex-1 rounded-full bg-[#4F46E5] px-4 py-2 text-center text-sm font-bold text-white">Individual</div>
             <div className="flex-1 px-4 py-2 text-center text-sm font-medium text-slate-500 dark:text-white/70">Teams</div>
           </div>
 
@@ -881,11 +1438,11 @@ export function HomeExperience() {
               <div
                 key={planName}
                 className={`overflow-hidden rounded-[1.9rem] bg-[#23253a] shadow-soft ${
-                  index === 1 ? "border-2 border-[#b9852b]" : "border border-white/10"
+                  index === 1 ? "border-2 border-[#7C5CFF]" : "border border-white/10"
                 }`}
               >
                 {index === 1 ? (
-                  <div className="bg-[#b9852b] py-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-white">
+                  <div className="bg-[#4F46E5] py-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-white">
                     Most popular
                   </div>
                 ) : null}
@@ -910,7 +1467,7 @@ export function HomeExperience() {
                       plan.whiteLabel ? "White-label branding included" : "Shared branded workspace"
                     ].map((item) => (
                       <div key={item} className="flex gap-3 text-sm leading-7 text-white/72">
-                        <Check className="mt-1 h-4 w-4 shrink-0 text-[#ddb364]" />
+                        <Check className="mt-1 h-4 w-4 shrink-0 text-[#9F8BFF]" />
                         <span>{item}</span>
                       </div>
                     ))}
@@ -918,7 +1475,7 @@ export function HomeExperience() {
                   <Link
                     href={pricingAction.href}
                     className={`mt-8 inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-bold transition ${
-                      index === 1 ? "bg-[#b9852b] text-white" : "border border-[#b9852b] text-[#ddb364]"
+                      index === 1 ? "bg-[#4F46E5] text-white" : "border border-[#7C5CFF] text-[#9F8BFF]"
                     }`}
                   >
                     {pricingAction.label}
@@ -1012,7 +1569,7 @@ export function HomeExperience() {
         </div>
       </section>
 
-      <section className="bg-[#1b1d30] py-16 text-white dark:bg-[#1b1d30]">
+      <section className="bg-[#141B42] py-16 text-white dark:bg-[#141B42]">
         <div className={pageFrame}>
           <h2 className="text-[clamp(2rem,3vw,2.8rem)] font-bold tracking-[-0.05em]">Frequently asked questions</h2>
           <div className="mt-8 space-y-3">

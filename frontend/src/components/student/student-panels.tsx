@@ -23,31 +23,31 @@ import {
 } from "@/components/shared/lms-core";
 
 const learnerMetricCardStyles = [
-  "border-[#0f766e]/18 bg-[linear-gradient(180deg,rgba(15,118,110,0.08),rgba(255,255,255,0.96))]",
-  "border-[#1d4ed8]/18 bg-[linear-gradient(180deg,rgba(29,78,216,0.08),rgba(255,255,255,0.96))]",
-  "border-[#f59e0b]/18 bg-[linear-gradient(180deg,rgba(245,158,11,0.09),rgba(255,255,255,0.96))]",
-  "border-[#dc2626]/18 bg-[linear-gradient(180deg,rgba(220,38,38,0.07),rgba(255,255,255,0.96))]"
+  "border-[#4f46e5]/18 bg-[linear-gradient(180deg,rgba(79,70,229,0.09),rgba(255,255,255,0.96))]",
+  "border-[#2563eb]/18 bg-[linear-gradient(180deg,rgba(37,99,235,0.09),rgba(255,255,255,0.96))]",
+  "border-[#7c3aed]/18 bg-[linear-gradient(180deg,rgba(124,58,237,0.1),rgba(255,255,255,0.96))]",
+  "border-[#0ea5e9]/18 bg-[linear-gradient(180deg,rgba(14,165,233,0.08),rgba(255,255,255,0.96))]"
 ] as const;
 
 const learnerCourseCardStyles = [
-  "border-[#0f766e]/16 bg-[linear-gradient(135deg,rgba(15,118,110,0.06),rgba(255,255,255,0.98)_34%)]",
-  "border-[#1d4ed8]/16 bg-[linear-gradient(135deg,rgba(29,78,216,0.06),rgba(255,255,255,0.98)_34%)]",
-  "border-[#f59e0b]/16 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(255,255,255,0.98)_34%)]",
-  "border-[#dc2626]/14 bg-[linear-gradient(135deg,rgba(220,38,38,0.05),rgba(255,255,255,0.98)_34%)]"
+  "border-[#4f46e5]/16 bg-[linear-gradient(135deg,rgba(79,70,229,0.07),rgba(255,255,255,0.98)_34%)]",
+  "border-[#2563eb]/16 bg-[linear-gradient(135deg,rgba(37,99,235,0.07),rgba(255,255,255,0.98)_34%)]",
+  "border-[#7c3aed]/16 bg-[linear-gradient(135deg,rgba(124,58,237,0.08),rgba(255,255,255,0.98)_34%)]",
+  "border-[#0ea5e9]/14 bg-[linear-gradient(135deg,rgba(14,165,233,0.06),rgba(255,255,255,0.98)_34%)]"
 ] as const;
 
 const learnerModuleCardStyles = [
-  "border-[#0f766e]/14 bg-[linear-gradient(180deg,rgba(15,118,110,0.05),rgba(255,255,255,0.98))]",
-  "border-[#1d4ed8]/14 bg-[linear-gradient(180deg,rgba(29,78,216,0.05),rgba(255,255,255,0.98))]",
-  "border-[#f59e0b]/14 bg-[linear-gradient(180deg,rgba(245,158,11,0.06),rgba(255,255,255,0.98))]",
-  "border-[#dc2626]/12 bg-[linear-gradient(180deg,rgba(220,38,38,0.04),rgba(255,255,255,0.98))]"
+  "border-[#4f46e5]/14 bg-[linear-gradient(180deg,rgba(79,70,229,0.06),rgba(255,255,255,0.98))]",
+  "border-[#2563eb]/14 bg-[linear-gradient(180deg,rgba(37,99,235,0.06),rgba(255,255,255,0.98))]",
+  "border-[#7c3aed]/14 bg-[linear-gradient(180deg,rgba(124,58,237,0.07),rgba(255,255,255,0.98))]",
+  "border-[#0ea5e9]/12 bg-[linear-gradient(180deg,rgba(14,165,233,0.05),rgba(255,255,255,0.98))]"
 ] as const;
 
 const learnerAccentBars = [
-  "from-[#0f766e] via-[#2dd4bf] to-[#99f6e4]",
-  "from-[#1d4ed8] via-[#60a5fa] to-[#dbeafe]",
-  "from-[#f59e0b] via-[#fbbf24] to-[#fde68a]",
-  "from-[#dc2626] via-[#fb7185] to-[#fecdd3]"
+  "from-[#4f46e5] via-[#6366f1] to-[#a5b4fc]",
+  "from-[#2563eb] via-[#3b82f6] to-[#bfdbfe]",
+  "from-[#7c3aed] via-[#8b5cf6] to-[#ddd6fe]",
+  "from-[#0ea5e9] via-[#38bdf8] to-[#bae6fd]"
 ] as const;
 
 export function StudentAssessmentPanel() {
@@ -109,15 +109,15 @@ export function StudentAssessmentPanel() {
       <Section title="Submission history" subtitle="Scores, pass/fail outcomes, and written feedback are preserved in the mock student record.">
         <div className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.3rem] border border-[#0f766e]/15 bg-[linear-gradient(180deg,rgba(15,118,110,0.06),rgba(255,255,255,0.96))] p-4">
+            <div className="rounded-[1.3rem] border border-[#4f46e5]/15 bg-[linear-gradient(180deg,rgba(79,70,229,0.07),rgba(255,255,255,0.96))] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Total submitted</p>
               <p className="mt-2 font-serif text-3xl">{mySubmissions.length}</p>
             </div>
-            <div className="rounded-[1.3rem] border border-[#1d4ed8]/15 bg-[linear-gradient(180deg,rgba(29,78,216,0.06),rgba(255,255,255,0.96))] p-4">
+            <div className="rounded-[1.3rem] border border-[#2563eb]/15 bg-[linear-gradient(180deg,rgba(37,99,235,0.07),rgba(255,255,255,0.96))] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Passed</p>
               <p className="mt-2 font-serif text-3xl">{mySubmissions.filter((submission) => submission.passed).length}</p>
             </div>
-            <div className="rounded-[1.3rem] border border-[#f59e0b]/15 bg-[linear-gradient(180deg,rgba(245,158,11,0.06),rgba(255,255,255,0.96))] p-4">
+            <div className="rounded-[1.3rem] border border-[#7c3aed]/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.08),rgba(255,255,255,0.96))] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Latest score</p>
               <p className="mt-2 font-serif text-3xl">{latestSubmission ? `${latestSubmission.score}%` : "--"}</p>
             </div>
@@ -134,7 +134,7 @@ export function StudentAssessmentPanel() {
                 }}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                   activeSubmissionTab === tab.id
-                    ? "border-[#1A1A2E]/20 bg-[linear-gradient(135deg,#1A1A2E,#2D2D50_60%,#E8A020)] text-white shadow-glow"
+                    ? "border-primary/30 bg-[linear-gradient(135deg,#1f2c69,#3346a8_60%,#7c5cff)] text-white shadow-glow"
                     : "border-foreground/10 bg-white/80 text-foreground shadow-soft"
                 }`}
               >
@@ -148,7 +148,7 @@ export function StudentAssessmentPanel() {
               {visibleSubmissions.map((submission, index) => {
                 const assessment = state.assessments.find((item) => item.id === submission.assessmentId);
                 return (
-                  <div key={submission.id} className={`workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} rounded-[1.4rem] border p-4 shadow-soft ${submission.passed ? "border-[#0f766e]/16 bg-[linear-gradient(135deg,rgba(15,118,110,0.06),rgba(255,255,255,0.98))]" : "border-[#f59e0b]/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.07),rgba(255,255,255,0.98))]"}`}>
+                  <div key={submission.id} className={`workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} rounded-[1.4rem] border p-4 shadow-soft ${submission.passed ? "border-[#4f46e5]/16 bg-[linear-gradient(135deg,rgba(79,70,229,0.07),rgba(255,255,255,0.98))]" : "border-[#7c3aed]/18 bg-[linear-gradient(135deg,rgba(124,58,237,0.08),rgba(255,255,255,0.98))]"}`}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="font-semibold">{assessment?.title ?? "Assessment"}</p>
@@ -157,7 +157,7 @@ export function StudentAssessmentPanel() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Badge className={submission.passed ? "border-[#0f766e]/20 bg-[#0f766e]/10 text-[#0f766e]" : "border-[#f59e0b]/20 bg-[#f59e0b]/10 text-[#b45309]"}>
+                        <Badge className={submission.passed ? "border-[#4f46e5]/20 bg-[#4f46e5]/10 text-[#4f46e5]" : "border-[#7c3aed]/20 bg-[#7c3aed]/10 text-[#6d28d9]"}>
                           {submission.passed ? "passed" : "needs work"}
                         </Badge>
                         <Badge className="bg-white/85">{submission.score}%</Badge>
@@ -304,13 +304,13 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
                               {hasVideo ? "Watch Video" : (lesson.type === "quiz" || lesson.type === "assignment") ? "Take Assessment" : "View PDF/Content"}
                             </SecondaryButton>
                           )}
-                          <Badge className={completed ? "border-[#0f766e]/20 bg-[#0f766e]/10 text-[#0f766e]" : "bg-white/70"}>{completed ? "completed" : "pending"}</Badge>
+                          <Badge className={completed ? "border-[#4f46e5]/20 bg-[#4f46e5]/10 text-[#4f46e5]" : "bg-white/70"}>{completed ? "completed" : "pending"}</Badge>
                           {!completed ? (
                             <SecondaryButton onClick={() => markLessonComplete(selectedCourse.id, lesson.id, studentName)}>
                               Mark complete
                             </SecondaryButton>
                           ) : (
-                            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-[#0f766e] shadow-soft">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-[#4f46e5] shadow-soft">
                               <CheckCircle2 className="h-4 w-4" />
                               Synced
                             </div>
@@ -341,7 +341,7 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
             ) : (
               <div className="workspace-reveal rounded-[1.35rem] border border-dashed border-foreground/15 bg-[linear-gradient(135deg,rgba(255,248,234,0.7),rgba(255,255,255,0.92))] p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5">
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-full bg-[#fff4db] p-2 text-[#f59e0b]">
+                  <div className="mt-0.5 rounded-full bg-[#ede9fe] p-2 text-[#7c3aed]">
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <p>Finish every lesson in this course and your certificate will be issued automatically.</p>
@@ -849,7 +849,7 @@ export function StudentDashboardPanel() {
           <div key={item.label} className={`workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} rounded-[24px] border p-5 shadow-soft backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-glow ${learnerMetricCardStyles[index % learnerMetricCardStyles.length]}`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-              <div className="rounded-[18px] bg-white/70 p-2.5 text-[#1A1A2E] shadow-sm">
+              <div className="rounded-[18px] bg-white/70 p-2.5 text-[#312e81] shadow-sm">
                 {item.icon}
               </div>
             </div>

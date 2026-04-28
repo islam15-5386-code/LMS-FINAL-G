@@ -1,3 +1,4 @@
+import { jsPDF } from "jspdf";
 import type { Certificate, Course, TenantBranding } from "@/lib/mock-lms";
 
 /** Calculate lesson completion % for a specific student */
@@ -22,6 +23,69 @@ export function downloadTextFile(filename: string, content: string, type = "text
 /** Download an HTML file from the browser */
 export function downloadHtmlFile(filename: string, content: string) {
   downloadTextFile(filename, content, "text/html;charset=utf-8");
+}
+
+/** Download a certificate as a PDF file */
+export function downloadCertificatePdf(certificate: Certificate, branding: TenantBranding) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const issuedDate = new Date(certificate.issuedAt).toLocaleDateString("en-BD", { dateStyle: "long" });
+  const primary = branding.primaryColor ?? "#0f766e";
+  const accent = branding.accentColor ?? "#E8A020";
+
+  doc.setFillColor(primary);
+  doc.rect(0, 0, pageWidth, 80, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(28);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Certificate of Completion", pageWidth / 2, 50, { align: "center" });
+
+  doc.setTextColor(40, 40, 40);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text(branding.tenantName ?? "Smart LMS", 60, 140);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text(`${branding.city ?? "Online"} • ${branding.supportEmail ?? "support@smartlms.local"}`, 60, 160);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(16);
+  doc.text("This certificate is proudly presented to", pageWidth / 2, 230, { align: "center" });
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(36);
+  doc.setTextColor(20, 30, 80);
+  doc.text(certificate.studentName, pageWidth / 2, 280, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(60, 60, 60);
+  const description = `For successfully completing the course \"${certificate.courseTitle}\" on ${issuedDate}.`;
+  doc.text(description, pageWidth / 2, 320, { align: "center" });
+
+  doc.setFont("courier", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(40, 40, 40);
+  doc.text(`Verification Code: ${certificate.verificationCode}`, pageWidth / 2, 360, { align: "center" });
+
+  doc.setDrawColor(accent);
+  doc.setLineWidth(2);
+  doc.line(120, pageHeight - 130, 320, pageHeight - 130);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(30, 30, 30);
+  doc.text("Authorized Signature", 220, pageHeight - 110, { align: "center" });
+
+  doc.setFillColor(accent);
+  doc.circle(pageWidth - 140, pageHeight - 160, 40, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text(branding.logoText ?? "SL", pageWidth - 140, pageHeight - 155, { align: "center" });
+
+  doc.save(`certificate-${certificate.verificationCode}.pdf`);
 }
 
 /** Build a printable certificate HTML page */

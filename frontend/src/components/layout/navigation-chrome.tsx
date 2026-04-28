@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpenText,
   ChartNoAxesCombined,
   Compass,
   CreditCard,
   GraduationCap,
+  ChevronDown,
   Home,
   LayoutDashboard,
   LogIn,
@@ -36,17 +38,28 @@ type RouteTabsProps = {
   links: Array<{ href: string; label: string }>;
 };
 
+type NavMenu = {
+  id: string;
+  label: string;
+  note?: string;
+  icon?: ReactNode;
+  href?: string;
+  items: NavLink[];
+};
+
 const marketingLinks: NavLink[] = [
   { href: "/", label: "Home", note: "Overview", icon: <Home className="h-4 w-4" /> },
   { href: "/features", label: "Features", note: "Product", icon: <Sparkles className="h-4 w-4" /> },
   { href: "/pricing", label: "Pricing", note: "Plans", icon: <CreditCard className="h-4 w-4" /> },
-  { href: "/catalog", label: "Catalog", note: "Explore", icon: <Compass className="h-4 w-4" /> }
+  { href: "/catalog", label: "Catalog", note: "Explore", icon: <Compass className="h-4 w-4" /> },
+  { href: "/demo", label: "Demo", note: "Try", icon: <PlayCircle className="h-4 w-4" /> }
 ];
 
 const marketingMobileLinks: NavLink[] = [
   { href: "/", label: "Home", icon: <Home className="h-4 w-4" /> },
   { href: "/catalog", label: "Catalog", icon: <Compass className="h-4 w-4" /> },
-  { href: "/pricing", label: "Pricing", icon: <CreditCard className="h-4 w-4" /> }
+  { href: "/pricing", label: "Pricing", icon: <CreditCard className="h-4 w-4" /> },
+  { href: "/demo", label: "Demo", icon: <PlayCircle className="h-4 w-4" /> }
 ];
 
 const contextualGroups: Array<{
@@ -58,46 +71,41 @@ const contextualGroups: Array<{
     match: (pathname) => pathname.startsWith("/admin"),
     label: "Admin lanes",
     links: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { href: "/admin/institute-settings", label: "Institute", icon: <Users className="h-4 w-4" /> },
-      { href: "/admin/users", label: "Users", icon: <Users className="h-4 w-4" /> },
-      { href: "/admin/courses", label: "Courses", icon: <BookOpenText className="h-4 w-4" /> },
-      { href: "/admin/enrollments", label: "Enrollments", icon: <GraduationCap className="h-4 w-4" /> },
-      { href: "/admin/assessments", label: "Assessments", icon: <Sparkles className="h-4 w-4" /> },
-      { href: "/admin/ai-tools", label: "AI Tools", icon: <Sparkles className="h-4 w-4" /> },
-      { href: "/admin/live-classes", label: "Live", icon: <PlayCircle className="h-4 w-4" /> },
-      { href: "/admin/certificates", label: "Certificates", icon: <ShieldCheck className="h-4 w-4" /> },
-  { href: "/admin/reports/compliance", label: "Reports", icon: <ChartNoAxesCombined className="h-4 w-4" /> },
-  { href: "/admin/reports/revenue", label: "Revenue", icon: <ChartNoAxesCombined className="h-4 w-4" /> },
-      { href: "/admin/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" /> },
-      { href: "/admin/billing", label: "Billing", icon: <CreditCard className="h-4 w-4" /> },
-      { href: "/admin/audit-logs", label: "Audit", icon: <ShieldCheck className="h-4 w-4" /> }
+      { href: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, note: "Overview" },
+      { href: "/admin/users", label: "Users", icon: <Users className="h-4 w-4" />, note: "Manage" },
+      { href: "/admin/courses", label: "Courses", icon: <BookOpenText className="h-4 w-4" />, note: "Content" },
+      { href: "/admin/enrollments", label: "Enrollments", icon: <GraduationCap className="h-4 w-4" />, note: "Monitor" },
+      { href: "/admin/live-classes", label: "Live Classes", icon: <PlayCircle className="h-4 w-4" />, note: "Sessions" },
+      { href: "/admin/assessments", label: "Assessments", icon: <Sparkles className="h-4 w-4" />, note: "Tests" },
+      { href: "/admin/certificates", label: "Certificates", icon: <ShieldCheck className="h-4 w-4" />, note: "Awards" },
+      { href: "/admin/reports/compliance", label: "Compliance", icon: <ChartNoAxesCombined className="h-4 w-4" />, note: "Reports" },
+      { href: "/admin/audit-logs", label: "Audit Logs", icon: <ShieldCheck className="h-4 w-4" />, note: "Security" },
+      { href: "/admin/billing", label: "Billing", icon: <CreditCard className="h-4 w-4" />, note: "Finance" }
     ]
   },
   {
     match: (pathname) => pathname.startsWith("/teacher"),
     label: "Teacher lanes",
     links: [
-      { href: "/teacher/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { href: "/teacher/courses", label: "Courses", icon: <BookOpenText className="h-4 w-4" /> },
-      { href: "/teacher/content-uploads", label: "Uploads", icon: <Compass className="h-4 w-4" /> },
-      { href: "/teacher/assessments", label: "Assess", icon: <Sparkles className="h-4 w-4" /> },
-      { href: "/teacher/assignments", label: "Assignments", icon: <BookOpenText className="h-4 w-4" /> },
-      { href: "/teacher/submissions", label: "Submissions", icon: <MessageSquareQuote className="h-4 w-4" /> },
-      { href: "/teacher/live-classes", label: "Live", icon: <PlayCircle className="h-4 w-4" /> },
-      { href: "/teacher/students", label: "Students", icon: <Users className="h-4 w-4" /> },
-      { href: "/teacher/announcements", label: "Announce", icon: <MessageSquareQuote className="h-4 w-4" /> }
+      { href: "/teacher/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, note: "Overview" },
+      { href: "/teacher/courses", label: "My Courses", icon: <BookOpenText className="h-4 w-4" />, note: "Manage" },
+      { href: "/teacher/students", label: "Students", icon: <Users className="h-4 w-4" />, note: "Track" },
+      { href: "/teacher/submissions", label: "Submissions", icon: <MessageSquareQuote className="h-4 w-4" />, note: "Review" },
+      { href: "/teacher/assessments", label: "Assessments", icon: <Sparkles className="h-4 w-4" />, note: "Tests" },
+      { href: "/teacher/assignments", label: "Assignments", icon: <BookOpenText className="h-4 w-4" />, note: "Tasks" },
+      { href: "/teacher/live-classes", label: "Live Classes", icon: <PlayCircle className="h-4 w-4" />, note: "Sessions" },
+      { href: "/teacher/announcements", label: "Announcements", icon: <MessageSquareQuote className="h-4 w-4" />, note: "Notify" }
     ]
   },
   {
     match: (pathname) => pathname.startsWith("/student"),
     label: "Student lanes",
     links: [
-      { href: "/student/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { href: "/student/courses", label: "Courses", icon: <BookOpenText className="h-4 w-4" /> },
-      { href: "/student/assignments", label: "Tasks", icon: <Sparkles className="h-4 w-4" /> },
-      { href: "/student/live-classes", label: "Live", icon: <PlayCircle className="h-4 w-4" /> },
-      { href: "/student/certificates", label: "Certificates", icon: <ShieldCheck className="h-4 w-4" /> }
+      { href: "/student/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, note: "Overview" },
+      { href: "/student/courses", label: "My Courses", icon: <BookOpenText className="h-4 w-4" />, note: "Learning" },
+      { href: "/student/assignments", label: "Tasks", icon: <Sparkles className="h-4 w-4" />, note: "To-do" },
+      { href: "/student/live-classes", label: "Live Classes", icon: <PlayCircle className="h-4 w-4" />, note: "Attend" },
+      { href: "/student/certificates", label: "Certificates", icon: <ShieldCheck className="h-4 w-4" />, note: "Awards" }
     ]
   },
   {
@@ -125,11 +133,11 @@ const contextualGroups: Array<{
 ];
 
 const defaultContextLinks: NavLink[] = [
-  { href: "/teacher/assessments/ai-generate", label: "AI Studio", icon: <Sparkles className="h-4 w-4" /> },
-  { href: "/teacher/live-classes", label: "Live Classroom", icon: <PlayCircle className="h-4 w-4" /> },
-  { href: "/admin/reports/compliance", label: "Compliance", icon: <ShieldCheck className="h-4 w-4" /> },
-  { href: "/admin/certificates", label: "Certificates", icon: <MessageSquareQuote className="h-4 w-4" /> },
-  { href: "/admin/billing", label: "Billing", icon: <CreditCard className="h-4 w-4" /> }
+  { href: "/catalog", label: "Catalog", icon: <Compass className="h-4 w-4" /> },
+  { href: "/pricing", label: "Pricing", icon: <CreditCard className="h-4 w-4" /> },
+  { href: "/admin/dashboard", label: "Admin", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/teacher/dashboard", label: "Teacher", icon: <GraduationCap className="h-4 w-4" /> },
+  { href: "/student/dashboard", label: "Student", icon: <BookOpenText className="h-4 w-4" /> }
 ];
 
 function isActive(pathname: string, href: string) {
@@ -184,6 +192,93 @@ function NavChip({ link, pathname }: { link: NavLink; pathname: string }) {
   );
 }
 
+function NavMenuChip({
+  menu,
+  pathname,
+  open,
+  onToggle,
+  onClose
+}: {
+  menu: NavMenu;
+  pathname: string;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+}) {
+  const anyActive = menu.href ? isActive(pathname, menu.href) : menu.items.some((item) => isActive(pathname, item.href));
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={`group relative flex min-h-[3.35rem] min-w-[6.9rem] items-center justify-center overflow-hidden rounded-full border px-3 py-2 text-center transition duration-300 ${
+          anyActive || open
+            ? "border-[#E8A020]/30 bg-[#1A1A2E] text-white shadow-glow"
+            : "border-white/60 bg-white/72 text-foreground/80 shadow-soft hover:-translate-y-0.5 hover:border-[#E8A020]/50 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+        }`}
+      >
+        <span
+          className={`absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.4),transparent_45%)] transition-opacity ${
+            anyActive || open ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        />
+        <span className="relative flex items-center justify-center gap-2">
+          <span className={anyActive || open ? "text-[#E8A020]" : "text-[#1A1A2E] dark:text-[#E8A020]"}>
+            {menu.icon}
+          </span>
+          <span className="flex flex-col items-center leading-none">
+            <span className="inline-flex items-center gap-1 text-sm font-semibold">
+              {menu.label}
+              <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
+            </span>
+            {menu.note ? (
+              <span className={`mt-1 text-[10px] uppercase tracking-[0.22em] ${anyActive || open ? "text-white/70" : "text-muted-foreground"}`}>
+                {menu.note}
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </button>
+
+      {open ? (
+        <div className="absolute left-1/2 top-full z-50 mt-3 w-[22rem] -translate-x-1/2 overflow-hidden rounded-[1.6rem] border border-foreground/10 bg-white/90 p-3 shadow-glow backdrop-blur dark:border-white/10 dark:bg-[#0b1220]/85">
+          <div className="grid gap-2">
+            {menu.items.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={`flex items-center gap-3 rounded-[1.2rem] border px-3 py-3 text-sm font-semibold transition ${
+                    active
+                      ? "border-[#E8A020]/30 bg-[#1A1A2E] text-white shadow-soft"
+                      : "border-foreground/10 bg-background/80 hover:-translate-y-0.5 hover:border-[#E8A020]/40 dark:border-white/10 dark:bg-white/5"
+                  }`}
+                >
+                  <span className={active ? "text-[#E8A020]" : "text-[#1A1A2E] dark:text-[#E8A020]"}>
+                    {item.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{item.label}</span>
+                    {item.note ? (
+                      <span className={`mt-1 block truncate text-[11px] font-medium ${active ? "text-white/70" : "text-muted-foreground"}`}>
+                        {item.note}
+                      </span>
+                    ) : null}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DockChip({ link, pathname }: { link: NavLink; pathname: string }) {
   const active = isActive(pathname, link.href);
 
@@ -203,12 +298,13 @@ function DockChip({ link, pathname }: { link: NavLink; pathname: string }) {
 }
 
 export function NavigationChrome() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const router = useRouter();
   const context = resolveContextLinks(pathname);
   const { mounted, theme, toggleTheme } = useThemeMode();
   const { currentUser, authReady, isAuthenticated, signOut } = useMockLms();
   const workspaceHref = isAuthenticated ? dashboardPathForRole(currentUser?.role) : "/login";
+  const dashboardHref = workspaceHref;
   const workspaceLabel =
     currentUser?.role === "teacher" ? "Teacher" : currentUser?.role === "student" ? "Student" : "Admin";
   const primaryLinks = isAuthenticated
@@ -244,93 +340,188 @@ export function NavigationChrome() {
       ]
     : marketingMobileLinks;
 
+  const menus = useMemo<NavMenu[]>(() => {
+    const adminMenu: NavMenu = {
+      id: "admin",
+      label: "Admin",
+      note: "Ops",
+      icon: <LayoutDashboard className="h-4 w-4" />,
+      href: "/admin/dashboard",
+      items: contextualGroups.find((g) => g.label === "Admin lanes")?.links ?? []
+    };
+
+    const teacherMenu: NavMenu = {
+      id: "teacher",
+      label: "Teacher",
+      note: "Deliver",
+      icon: <GraduationCap className="h-4 w-4" />,
+      href: "/teacher/dashboard",
+      items: contextualGroups.find((g) => g.label === "Teacher lanes")?.links ?? []
+    };
+
+    const studentMenu: NavMenu = {
+      id: "student",
+      label: "Student",
+      note: "Learn",
+      icon: <BookOpenText className="h-4 w-4" />,
+      href: "/student/dashboard",
+      items: contextualGroups.find((g) => g.label === "Student lanes")?.links ?? []
+    };
+
+    const catalogMenu: NavMenu = {
+      id: "catalog",
+      label: "Catalog",
+      note: "Explore",
+      icon: <Compass className="h-4 w-4" />,
+      href: "/catalog",
+      items: contextualGroups.find((g) => g.label === "Catalog lanes")?.links ?? [
+        { href: "/catalog", label: "All courses", note: "Discovery", icon: <Compass className="h-4 w-4" /> }
+      ]
+    };
+
+    const marketingMenu: NavMenu = {
+      id: "marketing",
+      label: "Menu",
+      note: "Pages",
+      icon: <Sparkles className="h-4 w-4" />,
+      items: marketingLinks
+    };
+
+    const authMenu: NavMenu = {
+      id: "account",
+      label: isAuthenticated ? "Account" : "Sign in",
+      note: isAuthenticated ? currentUser?.name ?? "" : "Access",
+      icon: isAuthenticated ? <Users className="h-4 w-4" /> : <LogIn className="h-4 w-4" />,
+      items: isAuthenticated
+        ? [
+            { href: dashboardHref, label: "Open dashboard", note: workspaceLabel, icon: <LayoutDashboard className="h-4 w-4" /> },
+            { href: "/login", label: "Switch user", note: "Re-auth", icon: <LogIn className="h-4 w-4" /> }
+          ]
+        : [
+            { href: "/login", label: "Login", note: "Existing", icon: <LogIn className="h-4 w-4" /> },
+            { href: "/signup", label: "Signup", note: "New", icon: <Sparkles className="h-4 w-4" /> },
+            { href: "/forgot-password", label: "Recover", note: "Password", icon: <ShieldCheck className="h-4 w-4" /> }
+          ]
+    };
+
+    if (isAuthenticated) {
+      return [marketingMenu, catalogMenu, adminMenu, teacherMenu, studentMenu, authMenu];
+    }
+
+    return [marketingMenu, catalogMenu, authMenu];
+  }, [currentUser?.name, dashboardHref, isAuthenticated, workspaceLabel]);
+
+  const navRef = useRef<HTMLDivElement | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOpenMenuId(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    function onDocumentMouseDown(event: MouseEvent) {
+      if (!openMenuId) return;
+      const target = event.target as Node;
+      if (!navRef.current?.contains(target)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", onDocumentMouseDown);
+    return () => document.removeEventListener("mousedown", onDocumentMouseDown);
+  }, [openMenuId]);
+
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-background/70 backdrop-blur-2xl dark:border-white/5">
-        <div className="mx-auto w-full max-w-[1840px] px-4 py-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-br from-background via-background to-background/95 backdrop-blur-2xl dark:border-white/5 shadow-sm">
+        <div className="mx-auto w-full max-w-[1840px] px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-[1.45rem] bg-[linear-gradient(135deg,#1A1A2E_55%,#E8A020)] text-white shadow-glow">
-                <span className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.38),transparent_46%)]" />
-                <span className="relative font-serif text-lg">SL</span>
+            {/* Logo Section */}
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-[1.45rem] bg-gradient-to-br from-[#1A1A2E] to-[#E8A020] text-white shadow-lg hover:shadow-xl transition-shadow">
+                <span className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.3),transparent_46%)]" />
+                <span className="relative font-serif text-lg font-bold">SL</span>
               </div>
-              <div>
-                <p className="font-serif text-xl font-semibold leading-none">Smart LMS</p>
-                <div className="mt-1 flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-                  <span>Learning platform</span>
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#E8A020] shadow-[0_0_16px_rgba(232,160,32,0.7)]" />
+              <div className="hidden sm:block">
+                <p className="font-serif text-lg font-bold leading-none text-foreground">Smart LMS</p>
+                <div className="mt-1 flex items-center gap-2 text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
+                  <span>Learning Platform</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-[#E8A020] to-orange-400" />
                 </div>
               </div>
             </Link>
 
-            <div className="hidden flex-1 justify-center xl:flex">
-              <nav className="flex flex-wrap items-center gap-2 rounded-full border border-white/70 bg-white/55 p-2 shadow-glow backdrop-blur dark:border-white/10 dark:bg-white/5">
-                {primaryLinks.map((link) => (
-                  <NavChip key={link.href} link={link} pathname={pathname} />
+            {/* Desktop Navigation Menu */}
+            <div className="hidden flex-1 justify-center xl:flex px-6">
+              <div ref={navRef} className="flex flex-wrap items-center gap-2 rounded-full border border-gradient-to-r from-white/60 to-white/40 bg-gradient-to-br from-white/60 to-white/50 p-2 shadow-lg backdrop-blur-xl dark:border-white/10 dark:from-white/8 dark:to-white/5">
+                {menus.map((menu) => (
+                  <NavMenuChip
+                    key={menu.id}
+                    menu={menu}
+                    pathname={pathname}
+                    open={openMenuId === menu.id}
+                    onToggle={() => setOpenMenuId((current) => (current === menu.id ? null : menu.id))}
+                    onClose={() => setOpenMenuId(null)}
+                  />
                 ))}
-              </nav>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Right Side Controls */}
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-foreground/15 bg-card/80 px-4 text-sm font-semibold text-foreground shadow-soft transition hover:-translate-y-0.5 hover:border-[#E8A020]/60 dark:border-white/10 dark:bg-white/5"
+                className="inline-flex h-10 w-10 sm:h-11 sm:w-auto items-center justify-center gap-2 rounded-full border border-foreground/20 bg-gradient-to-br from-card to-card/80 px-0 sm:px-4 py-2 text-sm font-semibold text-foreground shadow-md transition hover:border-[#E8A020]/60 hover:shadow-lg hover:-translate-y-0.5 dark:border-white/10 dark:from-white/8 dark:to-white/5"
                 aria-label={mounted ? `Switch to ${theme === "light" ? "dark" : "light"} mode` : "Toggle theme"}
               >
-                {mounted && theme === "dark" ? <SunMedium className="h-4 w-4 text-[#E8A020]" /> : <MoonStar className="h-4 w-4 text-[#1A1A2E]" />}
-                <span className="hidden sm:inline">{mounted && theme === "dark" ? "Day mode" : "Night mode"}</span>
+                {mounted && theme === "dark" ? (
+                  <SunMedium className="h-4 w-4 text-[#E8A020]" />
+                ) : (
+                  <MoonStar className="h-4 w-4 text-[#1A1A2E]" />
+                )}
+                <span className="hidden sm:inline text-xs">{mounted && theme === "dark" ? "Light" : "Dark"}</span>
               </button>
+              
               {authReady && isAuthenticated ? (
                 <>
+                  <Link
+                    href={workspaceHref}
+                    className="hidden md:inline-flex rounded-full border border-foreground/20 bg-gradient-to-br from-card to-card/80 px-4 py-2 text-sm font-medium transition hover:border-[#E8A020]/60 hover:shadow-lg hover:-translate-y-0.5 dark:border-white/10 dark:from-white/8 dark:to-white/5"
+                    title={currentUser?.name}
+                  >
+                    {currentUser?.name?.split(" ")[0] ?? "Dashboard"}
+                  </Link>
                   <button
                     type="button"
                     onClick={() => void signOut().then(() => router.replace("/login"))}
-                    className="hidden rounded-full border border-foreground/15 bg-card/80 px-4 py-2 text-sm transition hover:-translate-y-0.5 hover:border-[#E8A020]/60 md:inline-flex dark:border-white/10 dark:bg-white/5"
+                    className="hidden sm:inline-flex rounded-full border border-foreground/20 bg-gradient-to-br from-card to-card/80 px-4 py-2 text-sm font-medium transition hover:border-[#E8A020]/60 hover:shadow-lg hover:-translate-y-0.5 dark:border-white/10 dark:from-white/8 dark:to-white/5"
                   >
-                    Sign out
+                    Logout
                   </button>
-                  <Link
-                    href={workspaceHref}
-                    className="hidden rounded-full border border-foreground/15 bg-card/80 px-4 py-2 text-sm transition hover:-translate-y-0.5 hover:border-[#E8A020]/60 md:inline-flex dark:border-white/10 dark:bg-white/5"
-                  >
-                    {currentUser?.name}
-                  </Link>
                 </>
               ) : (
                 <Link
                   href="/login"
-                  className="hidden rounded-full border border-foreground/15 bg-card/80 px-4 py-2 text-sm transition hover:-translate-y-0.5 hover:border-[#E8A020]/60 md:inline-flex dark:border-white/10 dark:bg-white/5"
+                  className="hidden sm:inline-flex rounded-full border border-foreground/20 bg-gradient-to-br from-card to-card/80 px-4 py-2 text-sm font-medium transition hover:border-[#E8A020]/60 hover:shadow-lg hover:-translate-y-0.5 dark:border-white/10 dark:from-white/8 dark:to-white/5"
                 >
-                  Sign in
+                  Sign In
                 </Link>
               )}
+              
               <Link
                 href="/demo"
-                className="rounded-full bg-[linear-gradient(135deg,#1A1A2E,#E8A020)] px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:-translate-y-0.5"
+                className="rounded-full bg-gradient-to-r from-[#1A1A2E] to-[#E8A020] px-4 py-2 text-sm font-bold text-white shadow-lg hover:shadow-xl transition hover:-translate-y-0.5"
               >
-                Book demo
+                Demo
               </Link>
-            </div>
-          </div>
-
-          <div className="mt-4 hidden xl:block">
-            <div className="flex items-center gap-3 overflow-x-auto rounded-[1.75rem] border border-white/60 bg-white/60 p-3 shadow-soft backdrop-blur dark:border-white/10 dark:bg-white/5">
-              <div className="shrink-0 rounded-full bg-[#1A1A2E] px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-[#E8A020]">
-                {context.label}
-              </div>
-              <div className="flex min-w-max items-center gap-2">
-                {context.links.map((link) => (
-                  <NavChip key={link.href} link={link} pathname={pathname} />
-                ))}
-              </div>
             </div>
           </div>
         </div>
       </header>
 
+      {/* Mobile Navigation Dock */}
       <div className="fixed inset-x-0 bottom-4 z-40 px-4 xl:hidden">
-        <div className="mx-auto flex max-w-md items-center justify-between rounded-[1.9rem] border border-white/70 bg-white/80 p-2 shadow-glow backdrop-blur-2xl dark:border-white/10 dark:bg-white/10">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-2 rounded-2xl border border-white/70 bg-gradient-to-br from-white/90 to-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-white/10 dark:from-white/10 dark:to-white/5">
           {mobileLinks.map((link) => (
             <DockChip key={link.href} link={link} pathname={pathname} />
           ))}
@@ -341,7 +532,7 @@ export function NavigationChrome() {
 }
 
 export function FancyRouteTabs({ title, links }: RouteTabsProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
 
   return (
     <section className="mx-auto w-full max-w-[1840px] px-4 pb-24 sm:px-6 xl:pb-20 lg:px-8">

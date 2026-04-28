@@ -32,7 +32,19 @@ import {
   generateTeacherAssessmentDraft,
   publishTeacherAssessment,
   uploadTeacherNote,
-  createLiveClassOnBackend
+  createLiveClassOnBackend,
+  fetchCoursesFromBackend,
+  createCourseOnBackend,
+  publishCourseOnBackend,
+  addCourseModuleOnBackend,
+  updateCourseModuleOnBackend,
+  deleteCourseModuleOnBackend,
+  reorderCourseModulesOnBackend,
+  addCourseLessonOnBackend,
+  updateCourseLessonOnBackend,
+  deleteCourseLessonOnBackend,
+  reorderCourseLessonsOnBackend,
+  uploadLessonContentOnBackend
 } from "@/lib/api/lms-backend";
 
 import {
@@ -51,8 +63,9 @@ import {
   readNoteFile
 } from "@/components/shared/lms-core";
 
-export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string }) {
-  const { state, createCourse, publishCourse, addModule, addLesson, uploadLessonContent, updateModule, deleteModule, reorderModules, updateLesson, deleteLesson, reorderLessons } = useMockLms();
+export function CourseWorkbench({ defaultCourseId, onRefresh }: { defaultCourseId?: string; onRefresh?: () => void }) {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [courseForm, setCourseForm] = useState({
     title: "",
     category: "Operations",
@@ -67,12 +80,27 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
   const [uploadStatus, setUploadStatus] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
-  const selectedCourse = state.courses.find((course) => course.id === defaultCourseId) ?? state.courses[0];
-  const selectedModule = selectedModuleId ? selectedCourse?.modules.find(m => m.id === selectedModuleId) : selectedCourse?.modules[0];
+  const loadCourses = async () => {
+    try {
+      const data = await fetchCoursesFromBackend();
+      setCourses(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadCourses();
+  }, []);
+
+  const selectedCourse = courses.find((course) => course.id === defaultCourseId) ?? courses[0];
+  const selectedModule = selectedModuleId ? selectedCourse?.modules.find((m: any) => m.id === selectedModuleId) : selectedCourse?.modules[0];
   const [showAllLessonUploads, setShowAllLessonUploads] = useState(false);
   const [showAllPortfolioCourses, setShowAllPortfolioCourses] = useState(false);
   const visibleLessonUploads = showAllLessonUploads ? (selectedModule?.lessons ?? []) : (selectedModule?.lessons ?? []).slice(0, 5);
-  const visiblePortfolioCourses = showAllPortfolioCourses ? state.courses : state.courses.slice(0, 3);
+  const visiblePortfolioCourses = showAllPortfolioCourses ? courses : courses.slice(0, 3);
 
   return (
     <div className="grid gap-7 xl:grid-cols-[0.95fr_1.05fr]">
@@ -84,10 +112,12 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
           <TextInput type="number" value={courseForm.price} onChange={(event) => setCourseForm({ ...courseForm, price: Number(event.target.value) })} />
           <PrimaryButton
             className="min-h-[42px] text-base"
-            onClick={() => {
+            onClick={async () => {
               if (!courseForm.title.trim()) return;
-              createCourse(courseForm);
+              await createCourseOnBackend(courseForm);
               setCourseForm({ title: "", category: "Operations", description: "", price: 199 });
+              void loadCourses();
+              if (onRefresh) onRefresh();
             }}
           >
             Create new course
@@ -112,39 +142,45 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
               <TextInput value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="New module title" className="max-w-xs" />
               <SecondaryButton
                 className="min-h-[42px] px-5"
-                onClick={() => {
+                onClick={async () => {
                   if (!moduleTitle.trim()) return;
-                  addModule(selectedCourse.id, moduleTitle);
+                  await addCourseModuleOnBackend(selectedCourse.id, moduleTitle);
                   setModuleTitle("");
+                  void loadCourses();
+                  if (onRefresh) onRefresh();
                 }}
               >
                 Add module
               </SecondaryButton>
-              <PrimaryButton className="min-h-[42px] px-5" onClick={() => publishCourse(selectedCourse.id)}>
+              <PrimaryButton className="min-h-[42px] px-5" onClick={async () => {
+                await publishCourseOnBackend(selectedCourse.id);
+                void loadCourses();
+                if (onRefresh) onRefresh();
+              }}>
                 Publish course
               </PrimaryButton>
             </div>
 
             <div className="grid gap-4 mt-6">
-              {selectedCourse.modules.map((module, mIndex) => (
+              {selectedCourse.modules.map((module: any, mIndex: number) => (
                 <div key={module.id} className="rounded-[16px] border border-foreground/10 bg-background/50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                     <p className="font-semibold">{module.title}</p>
                     <div className="flex gap-2">
-                      <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => { const t = prompt("New module title", module.title); if (t) updateModule(selectedCourse.id, module.id, t, module.dripDays); }}><Pencil className="w-3 h-3" /></SecondaryButton>
-                      <SecondaryButton className="px-3 min-h-[32px] text-xs text-red-500" onClick={() => { if(confirm("Delete module?")) deleteModule(selectedCourse.id, module.id); }}><Trash2 className="w-3 h-3" /></SecondaryButton>
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => { const t = prompt("New module title", module.title); if (t) void updateCourseModuleOnBackend(selectedCourse.id, module.id, t, module.dripDays).then(() => void loadCourses()); }}><Pencil className="w-3 h-3" /></SecondaryButton>
+                      <SecondaryButton className="px-3 min-h-[32px] text-xs text-red-500" onClick={() => { if(confirm("Delete module?")) void deleteCourseModuleOnBackend(selectedCourse.id, module.id).then(() => void loadCourses()); }}><Trash2 className="w-3 h-3" /></SecondaryButton>
                       <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => {
                         const arr = [...selectedCourse.modules];
                         if (mIndex > 0) {
                           [arr[mIndex - 1], arr[mIndex]] = [arr[mIndex], arr[mIndex - 1]];
-                          reorderModules(selectedCourse.id, arr.map(x => x.id));
+                          void reorderCourseModulesOnBackend(selectedCourse.id, arr.map((x: any) => x.id)).then(() => void loadCourses());
                         }
                       }}><ChevronUp className="w-3 h-3" /></SecondaryButton>
                       <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => {
                         const arr = [...selectedCourse.modules];
                         if (mIndex < arr.length - 1) {
                           [arr[mIndex + 1], arr[mIndex]] = [arr[mIndex], arr[mIndex + 1]];
-                          reorderModules(selectedCourse.id, arr.map(x => x.id));
+                          void reorderCourseModulesOnBackend(selectedCourse.id, arr.map((x: any) => x.id)).then(() => void loadCourses());
                         }
                       }}><ChevronDown className="w-3 h-3" /></SecondaryButton>
                       <SecondaryButton className="px-3 min-h-[32px] text-xs" onClick={() => setSelectedModuleId(module.id)}>Add Lesson</SecondaryButton>
@@ -152,24 +188,24 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                   </div>
                   {module.lessons.length > 0 && (
                     <div className="grid gap-2 pl-4 border-l-2 border-foreground/5 mt-2">
-                      {module.lessons.map((lesson, lIndex) => (
+                      {module.lessons.map((lesson: any, lIndex: number) => (
                         <div key={lesson.id} className="flex justify-between items-center bg-white dark:bg-white/5 p-2 rounded border border-foreground/5">
                           <span className="text-sm">{lesson.title} ({lesson.type})</span>
                           <div className="flex gap-1">
-                            <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => { const t = prompt("New lesson title", lesson.title); if (t) updateLesson(selectedCourse.id, module.id, lesson.id, { ...lesson, title: t }); }}><Pencil className="w-3 h-3" /></button>
-                            <button className="p-1 hover:bg-foreground/5 rounded text-red-500" onClick={() => { if(confirm("Delete lesson?")) deleteLesson(selectedCourse.id, module.id, lesson.id); }}><Trash2 className="w-3 h-3" /></button>
+                            <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => { const t = prompt("New lesson title", lesson.title); if (t) void updateCourseLessonOnBackend(selectedCourse.id, module.id, lesson.id, { ...lesson, title: t }).then(() => void loadCourses()); }}><Pencil className="w-3 h-3" /></button>
+                            <button className="p-1 hover:bg-foreground/5 rounded text-red-500" onClick={() => { if(confirm("Delete lesson?")) void deleteCourseLessonOnBackend(selectedCourse.id, module.id, lesson.id).then(() => void loadCourses()); }}><Trash2 className="w-3 h-3" /></button>
                             <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => {
                               const arr = [...module.lessons];
                               if (lIndex > 0) {
                                 [arr[lIndex - 1], arr[lIndex]] = [arr[lIndex], arr[lIndex - 1]];
-                                reorderLessons(selectedCourse.id, module.id, arr.map(x => x.id));
+                                void reorderCourseLessonsOnBackend(selectedCourse.id, module.id, arr.map((x: any) => x.id)).then(() => void loadCourses());
                               }
                             }}><ChevronUp className="w-3 h-3" /></button>
                             <button className="p-1 hover:bg-foreground/5 rounded" onClick={() => {
                               const arr = [...module.lessons];
                               if (lIndex < arr.length - 1) {
                                 [arr[lIndex + 1], arr[lIndex]] = [arr[lIndex], arr[lIndex + 1]];
-                                reorderLessons(selectedCourse.id, module.id, arr.map(x => x.id));
+                                void reorderCourseLessonsOnBackend(selectedCourse.id, module.id, arr.map((x: any) => x.id)).then(() => void loadCourses());
                               }
                             }}><ChevronDown className="w-3 h-3" /></button>
                           </div>
@@ -198,9 +234,9 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                 </div>
                 <SecondaryButton
                   className="min-h-[42px]"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!lessonTitle.trim()) return;
-                    addLesson(selectedCourse.id, selectedModule.id, {
+                    await addCourseLessonOnBackend(selectedCourse.id, selectedModule.id, {
                       title: lessonTitle,
                       type: lessonType,
                       durationMinutes: lessonDuration,
@@ -209,6 +245,8 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                     setLessonTitle("");
                     setLessonDuration(15);
                     setLessonReleaseAt("");
+                    void loadCourses();
+                    if (onRefresh) onRefresh();
                   }}
                 >
                   Add lesson
@@ -217,7 +255,7 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                   <div className="grid gap-3 rounded-[16px] border border-foreground/10 bg-background/70 p-4 dark:border-white/8 dark:bg-white/5">
                     <p className="text-sm font-semibold text-foreground">Lesson content uploads</p>
                     <div className="grid gap-3">
-                      {visibleLessonUploads.map((lesson) => (
+                      {visibleLessonUploads.map((lesson: any) => (
                         <label key={lesson.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-foreground/10 bg-white px-4 py-3 text-sm dark:border-white/8 dark:bg-[#13212a]">
                           <div>
                             <p className="font-medium">{lesson.title}</p>
@@ -236,8 +274,10 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                               }
 
                               try {
-                                await uploadLessonContent(selectedCourse.id, selectedModule.id, lesson.id, file);
+                                await uploadLessonContentOnBackend(selectedCourse.id, selectedModule.id, lesson.id, file);
                                 setUploadStatus(`${file.name} uploaded to ${lesson.title}.`);
+                                void loadCourses();
+                                if (onRefresh) onRefresh();
                               } finally {
                                 event.target.value = "";
                               }
@@ -289,8 +329,8 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
             </div>
           ))}
         </div>
-        {state.courses.length > 3 ? (
-          <SeeMoreButton expanded={showAllPortfolioCourses} remaining={state.courses.length - 3} onClick={() => setShowAllPortfolioCourses((current) => !current)} />
+        {courses.length > 3 ? (
+          <SeeMoreButton expanded={showAllPortfolioCourses} remaining={courses.length - 3} onClick={() => setShowAllPortfolioCourses((current) => !current)} />
         ) : null}
       </Section>
     </div>
@@ -555,16 +595,16 @@ export function AssessmentLab({ reviewMode = false }: { reviewMode?: boolean }) 
   return (
     <Tabs.Root value={activeTab} onValueChange={(value) => setActiveTab(value as "generate" | "review")} className="grid gap-6">
       <Tabs.List className="flex flex-wrap gap-2 rounded-full border border-foreground/10 bg-white/70 p-2 shadow-soft dark:border-white/10 dark:bg-white/8">
-        <Tabs.Trigger value="generate" className="min-w-[7.25rem] rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground data-[state=active]:bg-[#1A1A2E] data-[state=active]:text-white dark:text-white/80">
+        <Tabs.Trigger value="generate" className="min-w-[7.25rem] rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground data-[state=active]:bg-[#1f2c69] data-[state=active]:text-white dark:text-white/80">
           AI Generation
         </Tabs.Trigger>
-        <Tabs.Trigger value="review" className="min-w-[7.25rem] rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground data-[state=active]:bg-[#1A1A2E] data-[state=active]:text-white dark:text-white/80">
+        <Tabs.Trigger value="review" className="min-w-[7.25rem] rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground data-[state=active]:bg-[#1f2c69] data-[state=active]:text-white dark:text-white/80">
           Review Queue
         </Tabs.Trigger>
       </Tabs.List>
 
       {backendMessage ? (
-        <div className={`rounded-[18px] border px-4 py-3 text-sm shadow-soft ${backendStatus === "error" ? "border-orange-300/50 bg-orange-50 text-orange-900 dark:border-orange-400/20 dark:bg-orange-500/10 dark:text-orange-100" : "border-[#E8A020]/20 bg-[#E8A020]/10 text-[#1A1A2E] dark:border-[#E8A020]/25 dark:bg-[#E8A020]/10 dark:text-[#F5C766]"}`}>
+        <div className={`rounded-[18px] border px-4 py-3 text-sm shadow-soft ${backendStatus === "error" ? "border-orange-300/50 bg-orange-50 text-orange-900 dark:border-orange-400/20 dark:bg-orange-500/10 dark:text-orange-100" : "border-primary/20 bg-primary/10 text-[#1f2c69] dark:border-primary/25 dark:bg-primary/15 dark:text-indigo-200"}`}>
           {backendMessage}
         </div>
       ) : null}
@@ -597,7 +637,7 @@ export function AssessmentLab({ reviewMode = false }: { reviewMode?: boolean }) 
                     Upload PDF, DOCX, or text notes and let the backend extract readable content before question generation.
                   </p>
                 </div>
-                <label htmlFor="note-upload-input" className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1A1A2E] px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-[#E8A020]">
+                <label htmlFor="note-upload-input" className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1f2c69] px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-[#4f46e5]">
                   <HardDriveUpload className="h-5 w-5" />
                   Upload notes
                 </label>
@@ -605,10 +645,10 @@ export function AssessmentLab({ reviewMode = false }: { reviewMode?: boolean }) 
 
               <input id="note-upload-input" type="file" accept=".txt,.md,.json,.csv,.pdf,.doc,.docx" className="hidden" onChange={handleNoteUpload} />
 
-              <div className="mt-5 rounded-[1.4rem] border border-dashed border-[#E8A020]/25 bg-background/80 p-4 dark:border-[#E8A020]/25 dark:bg-white/5">
+              <div className="mt-5 rounded-[1.4rem] border border-dashed border-primary/25 bg-background/80 p-4 dark:border-primary/25 dark:bg-white/5">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>Backend upload endpoint</Badge>
-                  <code className="text-sm text-[#1A1A2E] dark:text-[#F5C766]">{backendReadyEndpoints.noteUpload}</code>
+                  <code className="text-sm text-[#1f2c69] dark:text-indigo-200">{backendReadyEndpoints.noteUpload}</code>
                   {uploadMethod ? <Badge>{uploadMethod}</Badge> : null}
                 </div>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{uploadStatus}</p>
@@ -711,10 +751,10 @@ export function AssessmentLab({ reviewMode = false }: { reviewMode?: boolean }) 
             <Badge>{backendReadyEndpoints.aiAssessmentGenerate}</Badge>
           </div>
           {generationStatus ? (
-            <div className="mt-5 rounded-[20px] border border-[#E8A020]/20 bg-[#1A1A2E] px-5 py-4 text-white shadow-soft dark:border-[#E8A020]/20">
+            <div className="mt-5 rounded-[20px] border border-primary/20 bg-[#1f2c69] px-5 py-4 text-white shadow-soft dark:border-primary/20">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#F5C766]">Draft status</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-200">Draft status</p>
                   <p className="mt-2 text-sm leading-6 text-white/85">{generationStatus}</p>
                 </div>
                 <PrimaryButton className="min-h-[42px]" onClick={() => setActiveTab("review")}>

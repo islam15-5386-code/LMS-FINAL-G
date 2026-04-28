@@ -126,7 +126,7 @@ export function WorkspaceExperience({
   role: Role;
   segments: string[];
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const router = useRouter();
   const { state, currentUser, authReady, isAuthenticated } = useMockLms();
   const joined = segments.join("/");

@@ -40,7 +40,7 @@ export function SeeMoreButton({
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-foreground/15 bg-white/90 px-5 py-2 text-sm font-semibold text-foreground shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white dark:border-white/10 dark:bg-[#13212a]"
+        className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-foreground/15 bg-card/90 px-6 py-2.5 text-sm font-semibold text-foreground shadow-soft transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-glow dark:border-white/10 dark:bg-[#13212a]"
       >
         {expanded ? "Show less" : `See more (${remaining} more)`}
       </button>
@@ -455,16 +455,17 @@ export function Section({
 }) {
   return (
     <section
-      className={`min-w-0 overflow-hidden rounded-[24px] border p-6 shadow-soft ${
+      className={`relative min-w-0 overflow-hidden rounded-[28px] border p-6 shadow-soft sm:p-7 ${
         accent
-          ? "border-[#E8A020]/25 bg-[linear-gradient(150deg,#17304d_0%,#1f3d5e_58%,#c88b2c_100%)] text-white shadow-glow dark:border-[#E8A020]/25 dark:bg-[#151526]"
-          : "border-border/70 bg-card/80 backdrop-blur dark:border-white/8 dark:bg-white/5"
+          ? "border-primary/35 bg-[linear-gradient(140deg,#1b2a63_0%,#273d87_52%,#7c5cff_100%)] text-white shadow-glow dark:border-primary/35 dark:bg-[linear-gradient(140deg,#151d4b_0%,#20306d_56%,#6f57e6_100%)]"
+          : "border-border/75 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--card)/0.88))] backdrop-blur dark:border-white/8 dark:bg-white/5"
       }`}
     >
+      <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
       <div className="flex flex-col gap-2">
-        <h2 className="font-serif text-3xl">{title}</h2>
+        <h2 className="font-serif text-[clamp(1.8rem,2.4vw,2.4rem)] leading-tight">{title}</h2>
         {subtitle ? (
-          <p className={`text-sm leading-6 ${accent ? "text-white/75" : "text-muted-foreground"}`}>{subtitle}</p>
+          <p className={`max-w-3xl text-sm leading-7 ${accent ? "text-white/82" : "text-muted-foreground"}`}>{subtitle}</p>
         ) : null}
       </div>
       <div className="mt-6">{children}</div>
@@ -487,12 +488,13 @@ export function StatCard({
 }) {
   return (
     <div
-      className={`group min-w-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/85 p-5 shadow-soft backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_20px_45px_-28px_rgba(39,120,140,0.45)] dark:border-white/8 dark:bg-white/5 ${className}`}
+      className={`group relative min-w-0 overflow-hidden rounded-[24px] border border-border/70 bg-[linear-gradient(160deg,hsl(var(--card)/0.96),hsl(var(--card)/0.82))] p-5 shadow-soft backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-glow dark:border-white/8 dark:bg-white/5 ${className}`}
     >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/0 via-primary/60 to-accent/40 opacity-70" />
       <div className="flex min-w-0 items-start justify-between gap-3">
         <p className="min-w-0 text-xs uppercase tracking-[0.22em] text-muted-foreground text-pretty-wrap">{label}</p>
         {icon ? (
-          <div className="shrink-0 rounded-[18px] bg-primary/10 p-2.5 text-primary dark:bg-white/10 dark:text-[#E8A020]">
+          <div className="shrink-0 rounded-[16px] bg-primary/10 p-2.5 text-primary dark:bg-white/10 dark:text-[#9f7bff]">
             {icon}
           </div>
         ) : null}
@@ -508,7 +510,7 @@ export function StatCard({
 export function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <span
-      className={`inline-flex rounded-full border border-border/80 bg-card/70 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground backdrop-blur dark:border-white/8 dark:bg-white/5 ${className}`}
+      className={`inline-flex rounded-full border border-border/80 bg-card/70 px-3 py-1 text-xs uppercase tracking-[0.16em] text-muted-foreground backdrop-blur dark:border-white/8 dark:bg-white/5 ${className}`}
     >
       {children}
     </span>
@@ -533,7 +535,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`min-h-[3.35rem] w-full rounded-[14px] border border-border/80 bg-card px-4 py-3 text-sm shadow-soft outline-none transition placeholder:text-muted-foreground/70 focus:border-[#E8A020]/70 focus:ring-2 focus:ring-[#E8A020]/15 dark:border-white/8 dark:bg-white/5 ${props.className ?? ""}`}
+      className={`min-h-[3.35rem] w-full rounded-2xl border border-border/80 bg-card px-4 py-3 text-sm shadow-soft outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 dark:border-white/8 dark:bg-white/5 ${props.className ?? ""}`}
     />
   );
 }
@@ -542,7 +544,7 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`min-h-[160px] w-full rounded-[14px] border border-border/80 bg-card px-4 py-3 text-sm shadow-soft outline-none transition placeholder:text-muted-foreground/70 focus:border-[#E8A020]/70 focus:ring-2 focus:ring-[#E8A020]/15 dark:border-white/8 dark:bg-white/5 ${props.className ?? ""}`}
+      className={`min-h-[160px] w-full rounded-2xl border border-border/80 bg-card px-4 py-3 text-sm shadow-soft outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 dark:border-white/8 dark:bg-white/5 ${props.className ?? ""}`}
     />
   );
 }
@@ -551,7 +553,7 @@ export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`min-h-[3.35rem] w-full rounded-[14px] border border-border/80 bg-card px-4 py-3 text-sm shadow-soft outline-none transition focus:border-[#E8A020]/70 focus:ring-2 focus:ring-[#E8A020]/15 dark:border-white/8 dark:bg-white/5 ${props.className ?? ""}`}
+      className={`min-h-[3.35rem] w-full rounded-2xl border border-border/80 bg-card px-4 py-3 text-sm shadow-soft outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20 dark:border-white/8 dark:bg-white/5 ${props.className ?? ""}`}
     />
   );
 }
@@ -560,7 +562,7 @@ export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#216a83_0%,#2b7e95_56%,#d79a3d_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(43,126,149,0.55)] ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_45px_-20px_rgba(43,126,149,0.6)] disabled:cursor-not-allowed disabled:opacity-60 ${props.className ?? ""}`}
+      className={`inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#3b82f6_0%,#6366f1_52%,#8b5cf6_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_34px_-18px_rgba(79,70,229,0.6)] ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_46px_-18px_rgba(79,70,229,0.65)] disabled:cursor-not-allowed disabled:opacity-60 ${props.className ?? ""}`}
     />
   );
 }
@@ -569,7 +571,7 @@ export function SecondaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) 
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center rounded-full border border-foreground/15 bg-card/85 px-5 py-3 text-sm font-semibold text-foreground shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-card dark:border-white/10 dark:bg-white/5 ${props.className ?? ""}`}
+      className={`inline-flex items-center justify-center rounded-full border border-foreground/15 bg-card/85 px-5 py-3 text-sm font-semibold text-foreground shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-card hover:shadow-glow dark:border-white/10 dark:bg-white/5 ${props.className ?? ""}`}
     />
   );
 }
@@ -588,16 +590,16 @@ export function WorkspaceHero({
   return (
     <section className={`${pageFrame} pb-7 pt-10 md:pb-8`}>
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
-        <div className="workspace-reveal relative overflow-hidden rounded-[30px] border border-white/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,248,234,0.72)_42%,rgba(242,248,247,0.86))] px-7 py-8 shadow-[0_28px_60px_-40px_rgba(24,40,72,0.42)] backdrop-blur dark:border-white/8 dark:bg-white/5">
-          <div className="pointer-events-none absolute inset-y-0 right-[6%] w-36 rounded-full bg-[radial-gradient(circle,rgba(232,160,32,0.16),transparent_68%)] blur-2xl" />
-          <div className="pointer-events-none absolute -left-8 top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(29,78,216,0.09),transparent_70%)] blur-2xl" />
+        <div className="workspace-reveal relative overflow-hidden rounded-[30px] border border-white/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(238,242,255,0.8)_42%,rgba(242,248,255,0.9))] px-7 py-8 shadow-[0_28px_60px_-40px_rgba(24,40,72,0.42)] backdrop-blur dark:border-white/8 dark:bg-white/5">
+          <div className="pointer-events-none absolute inset-y-0 right-[6%] w-40 rounded-full bg-[radial-gradient(circle,rgba(124,92,255,0.22),transparent_68%)] blur-2xl" />
+          <div className="pointer-events-none absolute -left-8 top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.14),transparent_70%)] blur-2xl" />
           <p className="inline-flex rounded-full border border-foreground/10 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-muted-foreground shadow-soft dark:border-white/8 dark:bg-white/5">
             {eyebrow}
           </p>
           <h1 className="mt-6 max-w-4xl font-serif text-5xl leading-[0.96] text-balance md:text-6xl">{title}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">{description}</p>
         </div>
-        <div className="workspace-reveal workspace-delay-1 ambient-float soft-shimmer rounded-[28px] border border-foreground/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(255,248,240,0.72))] p-5 shadow-[0_30px_60px_-42px_rgba(31,41,55,0.45)] lg:mt-8 lg:max-w-[25rem] lg:justify-self-end dark:border-white/8 dark:bg-white/5">
+        <div className="workspace-reveal workspace-delay-1 ambient-float soft-shimmer rounded-[28px] border border-foreground/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(237,242,255,0.78))] p-5 shadow-[0_30px_60px_-42px_rgba(31,41,55,0.45)] lg:mt-8 lg:max-w-[25rem] lg:justify-self-end dark:border-white/8 dark:bg-white/5">
           <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Working frontend flows</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Badge>Multi-tenant branding</Badge>

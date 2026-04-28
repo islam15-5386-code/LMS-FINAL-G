@@ -6,13 +6,39 @@ import { DashboardLayout, PageHeader } from "@/components/dashboard/DashboardLay
 import { CourseWorkbench } from "@/components/teacher/teacher-panels";
 import { Badge, Section } from "@/components/shared/lms-core";
 import { useMockLms } from "@/providers/mock-lms-provider";
+import { fetchCoursesFromBackend } from "@/lib/api/lms-backend";
+import { useEffect, useState } from "react";
 
 export default function TeacherCoursesPage() {
-  const { state } = useMockLms();
   const { currentUser } = useMockLms();
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void fetchCoursesFromBackend()
+      .then((data) => {
+        setCourses(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
 
   // Show only courses assigned to this teacher (unless admin)
-  const visibleCourses = currentUser?.role === 'admin' ? state.courses : state.courses.filter((c) => c.teacherId === currentUser?.id);
+  const visibleCourses = currentUser?.role === 'admin' ? courses : courses.filter((c) => c.teacherId === currentUser?.id || c.teachers?.some((t: any) => t.id === currentUser?.id));
+
+  if (loading) {
+    return (
+      <DashboardLayout role="teacher">
+        <PageHeader title="My Courses" subtitle="Loading your courses..." />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="teacher">
@@ -20,7 +46,9 @@ export default function TeacherCoursesPage() {
         title="My Courses"
         subtitle="Build modules, add lessons, upload content, and publish courses."
       />
-      <CourseWorkbench />
+      <CourseWorkbench onRefresh={() => {
+        void fetchCoursesFromBackend().then(setCourses);
+      }} />
       <Section
         title="Manage course content"
         subtitle="Open a course to upload lessons, support PDF/MP4 files, and connect assessments for students."
@@ -40,8 +68,8 @@ export default function TeacherCoursesPage() {
               </div>
               <div className="grid gap-2 text-sm text-muted-foreground">
                 <p>{course.modules.length} modules</p>
-                <p>{course.modules.flatMap((module) => module.lessons).length} lessons</p>
-                <p>{course.assessmentCount ?? state.assessments.filter((item) => item.courseId === course.id).length} assessments</p>
+                <p>{course.modules.flatMap((module: any) => module.lessons).length} lessons</p>
+                <p>{course.assessmentCount ?? 0} assessments</p>
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link href={`/teacher/courses/${course.id}`} className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm">

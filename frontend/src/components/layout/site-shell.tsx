@@ -25,15 +25,7 @@ type HeroProps = {
 };
 
 export function SiteShell({ children }: ShellProps) {
-  const pathname = usePathname();
-
-  const isHome = pathname === "/";
-  const isDashboard = pathname.startsWith("/admin") || pathname.startsWith("/teacher") || pathname.startsWith("/student");
-  const isLogin = pathname === "/login";
-
-  if (isHome || isDashboard || isLogin) {
-    return <>{children}</>;
-  }
+  const pathname = usePathname() ?? "";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">

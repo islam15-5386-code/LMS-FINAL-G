@@ -23,21 +23,49 @@ class EnrollmentController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        $paidCourseIds = \App\Models\Payment::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'paid')
+            ->pluck('course_id');
+
         $enrollments = Enrollment::query()
             ->where(['tenant_id' => $user->tenant_id])
             ->where(['student_id' => $user->id])
             ->whereIn('status', ['active', 'completed'])
+            ->orWhere(function($query) use ($user, $paidCourseIds) {
+                $query->where('student_id', $user->id)
+                      ->whereIn('course_id', $paidCourseIds);
+            })
             ->with(['course.modules.lessons.completedUsers:id,name', 'course.teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'])
             ->latest('enrolled_at')
-            ->get();
+            ->get()
+            ->unique('course_id');
 
         $courses = $enrollments->map(function (Enrollment $enrollment) use ($user) {
-            if (!$enrollment->course) return null;
-            $courseData = LmsSupport::serializeCourse($enrollment->course, $user);
-            $courseData['enrollmentStatus'] = $enrollment->status;
-            $courseData['progressPercentage'] = $enrollment->progress_percentage;
-            $courseData['enrolledAt'] = optional($enrollment->enrolled_at)->toIso8601String();
-            return $courseData;
+            $course = $enrollment->course;
+            if (!$course) return null;
+
+            $courseData = LmsSupport::serializeCourse($course, $user);
+            
+            // Explicitly mapping requested fields
+            return [
+                'id' => $courseData['id'],
+                'title' => $courseData['title'],
+                'description' => $courseData['description'],
+                'category' => $courseData['category'],
+                'progressPercentage' => (int) $enrollment->progress_percentage,
+                'status' => $enrollment->status,
+                'thumbnail' => $course->thumbnail_url ?? null,
+                'enrolledAt' => optional($enrollment->enrolled_at)->toIso8601String(),
+
+                // Lesson counts for "lessons completed / total"
+                'lessonsCount' => $course->modules->flatMap->lessons->count(),
+                'completedLessonsCount' => $course->modules->flatMap->lessons->filter(fn($l) => $l->completedUsers->contains('id', $user->id))->count(),
+                
+                // Keep additional data like instructor/modules if needed by UI
+                'instructor' => $courseData['instructor'],
+                'modules' => $courseData['modules'],
+            ];
         })->filter()->values();
 
         $assessments = \App\Models\Assessment::query()

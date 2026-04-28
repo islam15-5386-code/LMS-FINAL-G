@@ -23,6 +23,11 @@ class TenantResolver
             $subdomain = $request->header('X-Tenant');
         }
 
+        if ($this->isLocalHost($host) && ($subdomain === null || $subdomain === 'localhost' || filter_var($subdomain, FILTER_VALIDATE_IP))) {
+            $subdomain = env('DEFAULT_TENANT_SUBDOMAIN')
+                ?: Tenant::query()->orderBy('id')->value('subdomain');
+        }
+
         $tenant = null;
         if ($subdomain !== null) {
             $tenant = Cache::remember("tenant_config:by_subdomain:{$subdomain}", 60 * 60, function () use ($subdomain) {
@@ -52,7 +57,11 @@ class TenantResolver
     private function extractSubdomain(string $host): ?string
     {
         // handle IP or localhost
-        if (str_contains($host, 'localhost') || filter_var($host, FILTER_VALIDATE_IP)) {
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return null;
+        }
+
+        if (str_contains($host, 'localhost')) {
             $parts = explode('.', $host);
             // for hosts like diu.localhost or diu.localhost:3000, take first segment
             return $parts[0] ?? null;

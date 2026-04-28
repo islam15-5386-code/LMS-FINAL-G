@@ -5,11 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { CheckCircle, Printer, ArrowLeft, Download, CreditCard, Building2, Calendar } from "lucide-react";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { fetchPaymentInvoiceOnBackend, getStoredToken } from "@/lib/api/lms-backend";
+import { DashboardLayout, PageHeader } from "@/components/dashboard/DashboardLayout";
 import { PrimaryButton, SecondaryButton, Badge, Section } from "@/components/shared/lms-core";
 import type { Payment } from "@/lib/mock-lms";
 
 export default function InvoicePage() {
-  const { id } = useParams();
+  const params = useParams<{ id: string | string[] }>();
+  const id = Array.isArray(params?.id) ? params?.id[0] : params?.id;
   const router = useRouter();
   const { state } = useMockLms();
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -18,6 +20,11 @@ export default function InvoicePage() {
 
   useEffect(() => {
     async function loadInvoice() {
+      if (!id) {
+        setError("Invoice not found.");
+        setLoading(false);
+        return;
+      }
       const token = getStoredToken();
       if (!token) {
         // Mock fallback
@@ -32,7 +39,7 @@ export default function InvoicePage() {
       }
 
       try {
-        const data = await fetchPaymentInvoiceOnBackend(id as string);
+        const data = await fetchPaymentInvoiceOnBackend(id);
         setPayment((data as any).data as Payment);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load invoice.");
@@ -53,27 +60,35 @@ export default function InvoicePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30">
-        <div className="animate-pulse text-muted-foreground">Generating invoice...</div>
-      </div>
+      <DashboardLayout role="student">
+        <PageHeader title="Invoice" subtitle="Preparing your invoice..." />
+        <div className="card flex min-h-[240px] items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Generating invoice...</div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (error || !payment) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-muted/30 p-4">
-        <p className="text-destructive">{error || "Invoice not found."}</p>
-        <SecondaryButton onClick={() => router.push("/student/dashboard")}>
-          Back to Dashboard
-        </SecondaryButton>
-      </div>
+      <DashboardLayout role="student">
+        <PageHeader title="Invoice" subtitle="Unable to load this invoice." />
+        <div className="card flex min-h-[240px] flex-col items-center justify-center gap-4">
+          <p className="text-destructive">{error || "Invoice not found."}</p>
+          <SecondaryButton onClick={() => router.push("/student/dashboard")}>
+            Back to Dashboard
+          </SecondaryButton>
+        </div>
+      </DashboardLayout>
     );
   }
 
   const course = state.courses.find(c => c.id === payment.courseId);
 
   return (
-    <div className="min-h-screen bg-muted/30 py-10 print:bg-white print:py-0">
+    <DashboardLayout role="student">
+      <PageHeader title="Invoice" subtitle="Review payment details and print or download your invoice." />
+      <div className="bg-muted/30 py-2 print:bg-white print:py-0">
       <div className="mx-auto max-w-3xl space-y-6 px-4">
         {/* Navigation - Hidden on print */}
         <div className="flex items-center justify-between print:hidden">
@@ -212,6 +227,7 @@ export default function InvoicePage() {
           Problems with the invoice? <button className="font-semibold text-primary underline">Contact Support</button>
         </p>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

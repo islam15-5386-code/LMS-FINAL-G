@@ -383,6 +383,84 @@ class CourseController extends Controller
         ], 201);
     }
 
+    public function toggleAssessmentGate(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+
+        $validated = $request->validate([
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        $course->update([
+            'assessment_gate_enabled' => $validated['enabled'],
+        ]);
+
+        LmsSupport::audit($user, 'Toggled assessment gate', $course->title . ': ' . ($validated['enabled'] ? 'ON' : 'OFF'), $request->ip());
+
+        return response()->json([
+            'message' => 'Assessment gate updated.',
+            'data' => LmsSupport::serializeCourse($course->fresh()->load('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'), $user),
+        ]);
+    }
+
+    public function students(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->userFromRequest($request);
+        $this->guardTenantCourse($user, $course);
+
+        // Authorize: Admin can see all, Teacher can see if assigned to this course
+        if ($user->role === 'teacher') {
+            $isAssigned = $course->teachers()->where('users.id', $user->id)->exists();
+            if (!$isAssigned && $course->teacher_id !== $user->id) {
+                abort(403, 'You are not assigned to this course.');
+            }
+        } elseif ($user->role !== 'admin') {
+            abort(403, 'Only admins and assigned teachers can view students.');
+        }
+
+        // Fetch students from Enrollments
+        $enrolledUserIds = $course->enrollments()
+            ->where('status', '!=', 'removed')
+            ->pluck('student_id')
+            ->toArray();
+
+        // Fetch students from Payments (status = paid)
+        $paidUserIds = \App\Models\Payment::query()
+            ->where('course_id', $course->id)
+            ->where('status', 'paid')
+            ->pluck('user_id')
+            ->toArray();
+
+        $allStudentIds = array_unique(array_merge($enrolledUserIds, $paidUserIds));
+
+        $students = User::query()
+            ->whereIn('id', $allStudentIds)
+            ->get()
+            ->map(function (User $student) use ($course) {
+                $enrollment = $course->enrollments()->where('student_id', $student->id)->first();
+                $payment = \App\Models\Payment::query()
+                    ->where('course_id', $course->id)
+                    ->where('user_id', $student->id)
+                    ->where('status', 'paid')
+                    ->first();
+
+                return [
+                    'id' => $student->id, // this might be the enrollment id if we want to be consistent with previous API
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'student_email' => $student->email,
+                    'status' => $enrollment ? $enrollment->status : ($payment ? 'paid' : 'pending'),
+                    'progress' => $enrollment ? $enrollment->progress_percentage : 0,
+                    'enrolled_at' => $enrollment ? $enrollment->enrolled_at : ($payment ? $payment->created_at : null),
+                ];
+            });
+
+        return response()->json([
+            'data' => $students,
+        ]);
+    }
+
     private function userFromRequest(Request $request): User
     {
         /** @var User $user */
@@ -446,6 +524,7 @@ class CourseController extends Controller
                 'status' => 'active',
                 'revoked' => false,
                 'revoked_at' => null,
+                'tenant_id' => $user->tenant_id,
             ]);
             $certificate->save();
 
