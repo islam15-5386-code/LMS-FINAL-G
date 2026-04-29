@@ -37,6 +37,9 @@ export type UserProfile = {
   email: string;
   token?: string;
   department?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
   profileImageUrl?: string | null;
   bio?: string | null;
   ratingAverage?: number | null;
@@ -120,6 +123,10 @@ export type Submission = {
   assessmentId: string;
   studentName: string;
   answerText: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileMime?: string | null;
+  fileSize?: number | null;
   score: number;
   feedback: string;
   passed: boolean;

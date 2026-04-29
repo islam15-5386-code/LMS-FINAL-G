@@ -69,6 +69,9 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('auth.jwt')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::patch('/auth/me', [AuthController::class, 'updateMe']);
+        Route::get('/auth/me/uploads', [AuthController::class, 'myUploads']);
+        Route::post('/auth/me/uploads', [AuthController::class, 'uploadMyFile']);
+        Route::delete('/auth/me/uploads/{upload}', [AuthController::class, 'deleteMyUpload']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
         Route::get('/bootstrap', [BootstrapController::class, 'show']);
@@ -141,6 +144,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/ai/parent-report', [AssessmentController::class, 'aiParentReport'])->middleware('plan.limit:ai_access');
 
         Route::get('/live-classes', [LiveClassController::class, 'index']);
+        Route::post('/live-classes', [LiveClassController::class, 'store']);
+        Route::patch('/live-classes/{liveClass}/status', [LiveClassController::class, 'updateStatus']);
         Route::get('/live-classes/{liveClass}', [LiveClassController::class, 'show']);
         Route::post('/live-classes/{liveClass}/go-live', [LiveClassController::class, 'goLive']);
         Route::post('/live-classes/{liveClass}/complete', [LiveClassController::class, 'complete']);
@@ -176,9 +181,6 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/users', [UserManagementController::class, 'store']);
             Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
             Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
-            // Admin-only class schedule management
-            Route::post('/live-classes', [LiveClassController::class, 'store']);
-            Route::patch('/live-classes/{liveClass}/status', [LiveClassController::class, 'updateStatus']);
             // Admin-only teacher assignment and student removal
             Route::post('/courses/{course}/assign-teacher', [AdminCourseManagementController::class, 'assignTeachers']);
         });

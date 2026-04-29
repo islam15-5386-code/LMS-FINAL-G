@@ -275,7 +275,6 @@ class AdminCourseManagementController extends Controller
         /** @var User $admin */
         $admin = $request->user();
         $this->authorizeAdmin($request);
-        $this->authorize('create', Course::class);
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -312,13 +311,19 @@ class AdminCourseManagementController extends Controller
             'target_audience' => [],
         ]);
 
+        if ($teacherId !== null) {
+            DB::table('course_teacher')->updateOrInsert(
+                ['course_id' => $course->id, 'teacher_id' => $teacherId],
+                ['tenant_id' => $course->tenant_id, 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+
         return response()->json(['data' => $course], 201);
     }
 
     public function updateCourse(Request $request, Course $course): JsonResponse
     {
         $this->authorizeAdmin($request);
-        $this->authorize('update', $course);
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
@@ -327,7 +332,13 @@ class AdminCourseManagementController extends Controller
             'price' => ['nullable', 'numeric', 'min:0'],
             'level' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', 'in:draft,published'],
+            'teacher_id' => ['nullable', 'exists:users,id'],
         ]);
+
+        if (array_key_exists('teacher_id', $validated) && $validated['teacher_id'] !== null) {
+            $teacher = User::query()->findOrFail((int) $validated['teacher_id']);
+            abort_unless($teacher->tenant_id === $course->tenant_id && $teacher->role === 'teacher', 422, 'Invalid teacher.');
+        }
 
         if (array_key_exists('price', $validated)) {
             $validated['price_bdt'] = (int) ($validated['price'] ?? 0);
@@ -338,13 +349,22 @@ class AdminCourseManagementController extends Controller
 
         $course->update($validated);
 
+        if (array_key_exists('teacher_id', $validated)) {
+            $teacherId = $validated['teacher_id'] !== null ? (int) $validated['teacher_id'] : null;
+            if ($teacherId !== null) {
+                DB::table('course_teacher')->updateOrInsert(
+                    ['course_id' => $course->id, 'teacher_id' => $teacherId],
+                    ['tenant_id' => $course->tenant_id, 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+        }
+
         return response()->json(['data' => $course->fresh()]);
     }
 
     public function destroyCourse(Request $request, Course $course): JsonResponse
     {
         $this->authorizeAdmin($request);
-        $this->authorize('delete', $course);
         $course->delete();
 
         return response()->json(['message' => 'Course deleted successfully.']);

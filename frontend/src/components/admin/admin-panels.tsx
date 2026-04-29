@@ -814,7 +814,7 @@ export function UserDirectoryPanel({ roleFilter }: { roleFilter?: "teacher" | "s
   );
 }
 
-export function AdminCoursePanel() {
+export function AdminCoursePanel({ refreshKey = 0 }: { refreshKey?: number }) {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
@@ -833,7 +833,7 @@ export function AdminCoursePanel() {
 
   useEffect(() => {
     void loadCourses();
-  }, []);
+  }, [refreshKey]);
 
   if (selectedCourse) {
     return (

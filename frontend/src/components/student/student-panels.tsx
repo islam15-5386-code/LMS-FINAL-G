@@ -6,7 +6,18 @@ import { useState, useEffect, useCallback } from "react";
 
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { YouTubePlayer } from "@/components/shared/youtube-player";
-import { fetchStudentLiveClassesFromBackend, fetchMySubmissionsFromBackend, getStoredToken, joinLiveClassOnBackend } from "@/lib/api/lms-backend";
+import {
+  deleteMyUploadFromBackend,
+  fetchAuthenticatedProfile,
+  fetchMySubmissionsFromBackend,
+  fetchMyUploadsFromBackend,
+  fetchStudentLiveClassesFromBackend,
+  getStoredToken,
+  joinLiveClassOnBackend,
+  updateAuthenticatedProfile,
+  uploadMyFileToBackend,
+  type UserUploadItem
+} from "@/lib/api/lms-backend";
 
 import {
   Badge,
@@ -54,6 +65,7 @@ export function StudentAssessmentPanel() {
   const { state, currentUser, submitAssessment } = useMockLms();
   const [assessmentId, setAssessmentId] = useState(state.assessments[0]?.id ?? "");
   const [answerText, setAnswerText] = useState("This answer references compliance, audit, and policy design to satisfy the rubric.");
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const studentName = currentUser?.name ?? "Student";
   const mySubmissions = state.submissions.filter((submission) => submission.studentName === studentName);
   const availableTypes = Array.from(
@@ -102,7 +114,22 @@ export function StudentAssessmentPanel() {
             ))}
           </SelectInput>
           <TextArea value={answerText} onChange={(event) => setAnswerText(event.target.value)} placeholder="Write your answer here" />
-          <PrimaryButton onClick={() => submitAssessment(assessmentId, studentName, answerText)}>Submit assessment</PrimaryButton>
+          <div className="rounded-[1rem] border border-foreground/10 bg-white/80 p-3 text-sm dark:border-white/10 dark:bg-white/5">
+            <p className="mb-2 font-semibold text-foreground">Attach file (optional)</p>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp,.zip,.rar"
+              className="text-xs"
+              onChange={(event) => setSubmissionFile(event.target.files?.[0] ?? null)}
+            />
+            {submissionFile ? <p className="mt-2 text-xs text-muted-foreground">Selected: {submissionFile.name}</p> : null}
+          </div>
+          <PrimaryButton
+            onClick={() => submitAssessment(assessmentId, studentName, answerText, submissionFile)}
+            disabled={answerText.trim().length === 0 && !submissionFile}
+          >
+            Submit assessment
+          </PrimaryButton>
         </div>
       </Section>
 
@@ -164,6 +191,15 @@ export function StudentAssessmentPanel() {
                       </div>
                     </div>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">{submission.feedback}</p>
+                    {submission.fileName ? (
+                      <div className="mt-3 rounded-[1rem] border border-foreground/10 bg-background/70 px-3 py-2 text-xs text-muted-foreground dark:border-white/8 dark:bg-white/5">
+                        Attached file: {submission.fileUrl ? (
+                          <a href={submission.fileUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground underline underline-offset-2">
+                            {submission.fileName}
+                          </a>
+                        ) : submission.fileName}
+                      </div>
+                    ) : null}
                     <div className="mt-3 rounded-[1rem] bg-white/70 px-3 py-2 text-xs text-muted-foreground">
                       {submission.answerText}
                     </div>
@@ -365,18 +401,149 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
 
 export function StudentSettingsPanel() {
   const { currentUser } = useMockLms();
+  const [name, setName] = useState(currentUser?.name ?? "Student");
+  const [email, setEmail] = useState(currentUser?.email ?? "");
+  const [department, setDepartment] = useState(currentUser?.department ?? "");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [bio, setBio] = useState("");
+  const [address, setAddress] = useState("");
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [status, setStatus] = useState("");
+  const [uploads, setUploads] = useState<UserUploadItem[]>([]);
+  const [uploadLabel, setUploadLabel] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const loadProfileAndUploads = useCallback(async () => {
+    try {
+      const [profile, myUploads] = await Promise.all([
+        fetchAuthenticatedProfile(),
+        fetchMyUploadsFromBackend(),
+      ]);
+      setName(profile.user.name ?? "");
+      setEmail(profile.user.email ?? "");
+      setDepartment(profile.user.department ?? "");
+      setPhone(profile.user.phone ?? "");
+      setCity(profile.user.city ?? "");
+      setBio(profile.user.bio ?? "");
+      setAddress(profile.user.address ?? "");
+      setUploads(myUploads);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to load profile.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProfileAndUploads();
+  }, [loadProfileAndUploads]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setStatus("");
+    try {
+      await updateAuthenticatedProfile({
+        name,
+        email,
+        department,
+        phone,
+        city,
+        bio,
+        address,
+        profileImage,
+      });
+      setProfileImage(null);
+      setStatus("Profile updated successfully.");
+      await loadProfileAndUploads();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setIsUploading(true);
+    setStatus("");
+    try {
+      await uploadMyFileToBackend(selectedFile, uploadLabel);
+      setSelectedFile(null);
+      setUploadLabel("");
+      setStatus("File uploaded successfully.");
+      await loadProfileAndUploads();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "File upload failed.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <Section title="Student profile and settings" subtitle="Manage learner identity, preferences, and convenience settings from the frontend.">
       <div className="grid gap-3 md:grid-cols-2">
-        <TextInput defaultValue={currentUser?.name ?? "Student"} />
-        <TextInput defaultValue={currentUser?.email ?? "student@example.com"} />
-        <TextInput defaultValue={currentUser?.department ?? "Learner"} />
+        <TextInput value={name} onChange={(event) => setName(event.target.value)} />
+        <TextInput value={email} onChange={(event) => setEmail(event.target.value)} />
+        <TextInput value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Department" />
+        <TextInput value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone" />
+        <TextInput value={city} onChange={(event) => setCity(event.target.value)} placeholder="City" />
         <SelectInput defaultValue="Daily">
           <option>Daily</option>
           <option>Only important reminders</option>
           <option>Weekly summary</option>
         </SelectInput>
+        <div className="md:col-span-2">
+          <TextArea value={bio} onChange={(event) => setBio(event.target.value)} placeholder="Short bio" className="min-h-[90px]" />
+        </div>
+        <div className="md:col-span-2">
+          <TextArea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Address" className="min-h-[90px]" />
+        </div>
+        <div className="md:col-span-2 rounded-[1rem] border border-foreground/10 bg-white/80 p-3 dark:border-white/10 dark:bg-white/5">
+          <p className="mb-2 text-sm font-semibold text-foreground">Profile image</p>
+          <input type="file" accept=".jpg,.jpeg,.png,.webp" className="text-xs" onChange={(event) => setProfileImage(event.target.files?.[0] ?? null)} />
+          {profileImage ? <p className="mt-2 text-xs text-muted-foreground">Selected: {profileImage.name}</p> : null}
+        </div>
+        <div className="md:col-span-2">
+          <PrimaryButton onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save profile"}
+          </PrimaryButton>
+        </div>
+        <div className="md:col-span-2 rounded-[1rem] border border-foreground/10 bg-white/80 p-3 dark:border-white/10 dark:bg-white/5">
+          <p className="mb-2 text-sm font-semibold text-foreground">My personal uploads</p>
+          <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+            <TextInput value={uploadLabel} onChange={(event) => setUploadLabel(event.target.value)} placeholder="Label (NID, CV, Notes...)" />
+            <input type="file" className="text-xs" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} />
+            <PrimaryButton onClick={handleUpload} disabled={!selectedFile || isUploading}>
+              {isUploading ? "Uploading..." : "Upload file"}
+            </PrimaryButton>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {uploads.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-foreground/10 px-3 py-2 text-xs dark:border-white/10">
+                <div>
+                  <p className="font-semibold text-foreground">{item.label || "Document"}</p>
+                  <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline underline-offset-2">
+                    {item.fileName}
+                  </a>
+                </div>
+                <SecondaryButton onClick={async () => {
+                  try {
+                    setStatus("");
+                    await deleteMyUploadFromBackend(item.id);
+                    await loadProfileAndUploads();
+                    setStatus("Upload removed.");
+                  } catch (error) {
+                    setStatus(error instanceof Error ? error.message : "Failed to remove upload.");
+                  }
+                }}>
+                  Remove
+                </SecondaryButton>
+              </div>
+            ))}
+          </div>
+        </div>
+        {status ? <p className="md:col-span-2 text-sm text-muted-foreground">{status}</p> : null}
       </div>
     </Section>
   );
@@ -585,6 +752,10 @@ export function StudentFeedbackPanel() {
     courseId: string | null;
     courseTitle: string | null;
     answerText: string;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    fileMime?: string | null;
+    fileSize?: number | null;
     status: string | null;
     score: number;
     passingMark: number;
@@ -760,6 +931,15 @@ export function StudentFeedbackPanel() {
                     <div className="mt-2 rounded-[0.9rem] bg-background/60 px-3 py-2 text-xs leading-6 text-muted-foreground dark:bg-white/5">{sub.answerText}</div>
                   </details>
                 )}
+                {sub.fileName ? (
+                  <div className="mt-3 rounded-[0.9rem] border border-foreground/10 bg-background/60 px-3 py-2 text-xs text-muted-foreground dark:border-white/8 dark:bg-white/5">
+                    Submitted file: {sub.fileUrl ? (
+                      <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground underline underline-offset-2">
+                        {sub.fileName}
+                      </a>
+                    ) : sub.fileName}
+                  </div>
+                ) : null}
               </div>
             );
           })}

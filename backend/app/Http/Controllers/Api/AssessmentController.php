@@ -252,16 +252,38 @@ class AssessmentController extends Controller
         abort_if($assessment->course?->tenant_id !== $user->tenant_id, 404, 'Assessment not found.');
 
         $validated = $request->validate([
-            'answer_text' => ['required', 'string'],
+            'answer_text' => ['nullable', 'string'],
+            'submission_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,txt,png,jpg,jpeg,webp,zip,rar', 'max:25600'],
         ]);
 
+        $answerText = trim((string) ($validated['answer_text'] ?? ''));
+        $file = $validated['submission_file'] ?? null;
+        abort_if($answerText === '' && $file === null, 422, 'Please provide answer text or upload a file.');
+
+        $fileUrl = null;
+        $fileName = null;
+        $fileMime = null;
+        $fileSize = null;
+
+        if ($file !== null) {
+            $path = $file->store('assessment-submissions/' . $assessment->id . '/' . $user->id, 'public');
+            $fileUrl = Storage::disk('public')->url($path);
+            $fileName = $file->getClientOriginalName();
+            $fileMime = $file->getMimeType();
+            $fileSize = $file->getSize();
+        }
+
         $result = in_array($assessment->type, ['Essay', 'Short Answer'], true)
-            ? LmsSupport::evaluateEssay($validated['answer_text'], $assessment->rubric_keywords ?? [])
-            : $this->scoreObjectiveAssessment($assessment, $validated['answer_text']);
+            ? LmsSupport::evaluateEssay($answerText !== '' ? $answerText : 'File submission only', $assessment->rubric_keywords ?? [])
+            : $this->scoreObjectiveAssessment($assessment, $answerText !== '' ? $answerText : 'file submission');
 
         $submission = $assessment->submissions()->create([
             'user_id' => $user->id,
-            'answer_text' => $validated['answer_text'],
+            'answer_text' => $answerText,
+            'file_url' => $fileUrl,
+            'file_name' => $fileName,
+            'file_mime' => $fileMime,
+            'file_size' => $fileSize,
             'status' => in_array($assessment->type, ['Essay', 'Short Answer'], true) ? 'pending_review' : 'graded',
             'score' => $result['score'],
             'feedback' => $result['feedback'],

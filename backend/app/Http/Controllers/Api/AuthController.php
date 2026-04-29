@@ -7,12 +7,14 @@ use App\Models\BillingProfile;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\UserUpload;
 use App\Support\JwtToken;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
@@ -162,7 +164,15 @@ class AuthController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'city' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
+            'profile_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
+
+        if (isset($validated['profile_image'])) {
+            $file = $validated['profile_image'];
+            $path = $file->store('profile-images/' . $user->id, 'public');
+            $validated['profile_image_url'] = Storage::disk('public')->url($path);
+            unset($validated['profile_image']);
+        }
 
         $user->fill($validated);
         $user->save();
@@ -185,6 +195,78 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Logged out successfully.',
+        ]);
+    }
+
+    public function myUploads(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $uploads = UserUpload::query()
+            ->where('user_id', $user->id)
+            ->latest()
+            ->get()
+            ->map(fn (UserUpload $upload) => [
+                'id' => (string) $upload->id,
+                'label' => $upload->label,
+                'fileName' => $upload->file_name,
+                'fileMime' => $upload->file_mime,
+                'fileSize' => $upload->file_size,
+                'fileUrl' => $upload->file_url,
+                'createdAt' => optional($upload->created_at)->toIso8601String(),
+            ]);
+
+        return response()->json(['data' => $uploads->all()]);
+    }
+
+    public function uploadMyFile(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:pdf,doc,docx,txt,jpg,jpeg,png,webp,zip,rar', 'max:25600'],
+            'label' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $file = $validated['file'];
+        $path = $file->store('user-uploads/' . $user->id, 'public');
+
+        $upload = UserUpload::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'user_id' => $user->id,
+            'label' => $validated['label'] ?? null,
+            'file_name' => $file->getClientOriginalName(),
+            'file_mime' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'file_url' => Storage::disk('public')->url($path),
+        ]);
+
+        return response()->json([
+            'message' => 'File uploaded successfully.',
+            'data' => [
+                'id' => (string) $upload->id,
+                'label' => $upload->label,
+                'fileName' => $upload->file_name,
+                'fileMime' => $upload->file_mime,
+                'fileSize' => $upload->file_size,
+                'fileUrl' => $upload->file_url,
+                'createdAt' => optional($upload->created_at)->toIso8601String(),
+            ],
+        ], 201);
+    }
+
+    public function deleteMyUpload(Request $request, UserUpload $upload): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        abort_if($upload->user_id !== $user->id, 404, 'Upload not found.');
+
+        $upload->delete();
+
+        return response()->json([
+            'message' => 'Upload deleted successfully.',
         ]);
     }
 

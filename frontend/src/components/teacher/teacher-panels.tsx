@@ -344,8 +344,17 @@ export function ContentUploadsPanel() {
   const [backendCourses, setBackendCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadStatus, setUploadStatus] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [selectedLessonId, setSelectedLessonId] = useState("");
+  const [uploadType, setUploadType] = useState<"Lesson PDF" | "Video" | "Assignment File" | "Slide Deck">("Lesson PDF");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [showAllLessons, setShowAllLessons] = useState(false);
   const courses = backendCourses.length ? backendCourses : state.courses;
+  const selectedCourse = courses.find((course) => course.id === selectedCourseId);
+  const selectedModule = selectedCourse?.modules.find((module) => module.id === selectedModuleId);
+  const selectedLesson = selectedModule?.lessons.find((lesson) => lesson.id === selectedLessonId);
   const lessons = courses.flatMap((course) =>
     course.modules.flatMap((module) =>
       module.lessons.map((lesson) => ({
@@ -358,6 +367,29 @@ export function ContentUploadsPanel() {
     )
   );
   const visibleLessons = showAllLessons ? lessons : lessons.slice(0, 5);
+
+  useEffect(() => {
+    if (!selectedCourseId && courses.length > 0) {
+      setSelectedCourseId(courses[0].id);
+    }
+  }, [courses, selectedCourseId]);
+
+  useEffect(() => {
+    if (!selectedCourseId) return;
+    const course = courses.find((item) => item.id === selectedCourseId);
+    const firstModuleId = course?.modules[0]?.id ?? "";
+    if (selectedModuleId && course?.modules.some((module) => module.id === selectedModuleId)) return;
+    setSelectedModuleId(firstModuleId);
+  }, [courses, selectedCourseId, selectedModuleId]);
+
+  useEffect(() => {
+    if (!selectedModuleId || !selectedCourseId) return;
+    const course = courses.find((item) => item.id === selectedCourseId);
+    const selectedModuleItem = course?.modules.find((item) => item.id === selectedModuleId);
+    const firstLessonId = selectedModuleItem?.lessons[0]?.id ?? "";
+    if (selectedLessonId && selectedModuleItem?.lessons.some((lesson) => lesson.id === selectedLessonId)) return;
+    setSelectedLessonId(firstLessonId);
+  }, [courses, selectedCourseId, selectedModuleId, selectedLessonId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -390,6 +422,69 @@ export function ContentUploadsPanel() {
   return (
     <Section title="Content uploads" subtitle="Teacher lesson materials, media files, and assignment assets stay organized at the lesson level.">
       {isLoading ? <p className="text-sm text-muted-foreground">Loading lesson content from backend...</p> : null}
+      <div className="mb-4 rounded-[1.4rem] border border-foreground/10 bg-white p-4 dark:border-white/8 dark:bg-[#13212a]">
+        <p className="text-sm font-semibold text-foreground">Upload content to a specific module and lesson</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <SelectInput value={selectedCourseId} onChange={(event) => setSelectedCourseId(event.target.value)}>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title}
+              </option>
+            ))}
+          </SelectInput>
+          <SelectInput value={selectedModuleId} onChange={(event) => setSelectedModuleId(event.target.value)}>
+            {(selectedCourse?.modules ?? []).map((module) => (
+              <option key={module.id} value={module.id}>
+                {module.title}
+              </option>
+            ))}
+          </SelectInput>
+          <SelectInput value={selectedLessonId} onChange={(event) => setSelectedLessonId(event.target.value)}>
+            {(selectedModule?.lessons ?? []).map((lesson) => (
+              <option key={lesson.id} value={lesson.id}>
+                {lesson.title}
+              </option>
+            ))}
+          </SelectInput>
+          <SelectInput value={uploadType} onChange={(event) => setUploadType(event.target.value as typeof uploadType)}>
+            <option value="Lesson PDF">Lesson PDF</option>
+            <option value="Video">Video</option>
+            <option value="Assignment File">Assignment File</option>
+            <option value="Slide Deck">Slide Deck</option>
+          </SelectInput>
+          <input
+            type="file"
+            accept=".pdf,.mp4,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.webp"
+            className="text-xs md:col-span-2"
+            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <PrimaryButton
+            disabled={!selectedCourse || !selectedModule || !selectedLesson || !selectedFile || isUploading}
+            onClick={async () => {
+              if (!selectedCourse || !selectedModule || !selectedLesson || !selectedFile) return;
+              setIsUploading(true);
+              try {
+                await uploadLessonContentOnBackend(selectedCourse.id, selectedModule.id, selectedLesson.id, selectedFile);
+                setUploadStatus(`${uploadType} uploaded: ${selectedFile.name} -> ${selectedLesson.title} (${selectedModule.title})`);
+                const loaded = await fetchCoursesFromBackend();
+                setBackendCourses(loaded);
+                setSelectedFile(null);
+              } catch (error) {
+                setUploadStatus(error instanceof Error ? error.message : "Upload failed.");
+              } finally {
+                setIsUploading(false);
+              }
+            }}
+          >
+            {isUploading ? "Uploading..." : "Upload content"}
+          </PrimaryButton>
+          <p className="text-xs text-muted-foreground">
+            Upload target: {selectedCourse?.title ?? "N/A"} / {selectedModule?.title ?? "N/A"} / {selectedLesson?.title ?? "N/A"}
+          </p>
+        </div>
+      </div>
       <div className="grid gap-4">
         {visibleLessons.map(({ courseId, moduleId, courseTitle, moduleTitle, lesson }) => (
           <div key={lesson.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-4 dark:border-white/8 dark:bg-[#13212a]">
@@ -906,7 +1001,12 @@ export function AssessmentLab({ reviewMode = false }: { reviewMode?: boolean }) 
 }
 
 export function LiveClassesPanel() {
-  const { state, scheduleLiveClass, setLiveClassStatus } = useMockLms();
+  const { state, currentUser, scheduleLiveClass, setLiveClassStatus } = useMockLms();
+  const availableCourses = state.courses.filter((course) => {
+    if (currentUser?.role !== "teacher") return true;
+    const assignedTeacherIds = (course.teachers ?? []).map((teacher: any) => String(teacher.id));
+    return String(course.teacherId) === String(currentUser.id) || assignedTeacherIds.includes(String(currentUser.id));
+  });
   const [showAllLiveClasses, setShowAllLiveClasses] = useState(false);
   type LiveClassFormState = {
     title: string;
@@ -923,7 +1023,7 @@ export function LiveClassesPanel() {
   };
   const [form, setForm] = useState<LiveClassFormState>({
     title: "New live session",
-    courseId: state.courses[0]?.id ?? "",
+    courseId: availableCourses[0]?.id ?? "",
     batchName: "",
     description: "",
     date: new Date().toISOString().slice(0, 10),
@@ -935,6 +1035,16 @@ export function LiveClassesPanel() {
     durationMinutes: 60
   });
   const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
+
+  useEffect(() => {
+    if (!form.courseId && availableCourses.length > 0) {
+      setForm((prev) => ({ ...prev, courseId: availableCourses[0].id }));
+      return;
+    }
+    if (form.courseId && !availableCourses.some((course) => course.id === form.courseId)) {
+      setForm((prev) => ({ ...prev, courseId: availableCourses[0]?.id ?? "" }));
+    }
+  }, [availableCourses, form.courseId]);
 
   async function handleGoLive(classId: string, meetingUrl?: string | null) {
     await setLiveClassStatus(classId, "live");
@@ -951,12 +1061,15 @@ export function LiveClassesPanel() {
           <TextInput value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
           <TextInput value={form.batchName} onChange={(event) => setForm({ ...form, batchName: event.target.value })} placeholder="Batch / Class" />
           <SelectInput value={form.courseId} onChange={(event) => setForm({ ...form, courseId: event.target.value })}>
-            {state.courses.map((course) => (
+            {availableCourses.map((course) => (
               <option key={course.id} value={course.id}>
                 {course.title}
               </option>
             ))}
           </SelectInput>
+          {availableCourses.length === 0 ? (
+            <p className="text-sm text-amber-600">No assigned course found for this teacher. Ask admin to assign a course first.</p>
+          ) : null}
           <TextArea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Description" className="min-h-[88px]" />
           <div className="grid gap-3 md:grid-cols-3">
             <TextInput type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
@@ -973,6 +1086,7 @@ export function LiveClassesPanel() {
           )}
           <TextInput type="number" value={form.durationMinutes} onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })} />
           <PrimaryButton
+            disabled={availableCourses.length === 0 || !form.courseId}
             onClick={async () => {
               try {
                 await createLiveClassOnBackend({

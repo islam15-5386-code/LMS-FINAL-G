@@ -51,6 +51,10 @@ type BackendSubmission = {
   assessmentId: string;
   studentName: string;
   answerText: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileMime?: string;
+  fileSize?: number;
   status?: string;
   score: number;
   feedback: string;
@@ -100,6 +104,9 @@ function normalizeUser(user: Record<string, unknown>): UserProfile {
     role: normalizeRole(user.role),
     email: String(user.email ?? ""),
     department: user.department ? String(user.department) : undefined,
+    phone: user.phone ? String(user.phone) : undefined,
+    city: user.city ? String(user.city) : undefined,
+    address: user.address ? String(user.address) : undefined,
     profileImageUrl: user.profileImageUrl ? String(user.profileImageUrl) : null,
     bio: user.bio ? String(user.bio) : null,
     ratingAverage: user.ratingAverage !== undefined && user.ratingAverage !== null ? Number(user.ratingAverage) : null,
@@ -210,6 +217,10 @@ function normalizeSubmission(submission: Record<string, unknown>): BackendSubmis
     assessmentId: String(submission.assessmentId ?? ""),
     studentName: String(submission.studentName ?? ""),
     answerText: String(submission.answerText ?? ""),
+    fileUrl: submission.fileUrl ? String(submission.fileUrl) : undefined,
+    fileName: submission.fileName ? String(submission.fileName) : undefined,
+    fileMime: submission.fileMime ? String(submission.fileMime) : undefined,
+    fileSize: submission.fileSize !== undefined && submission.fileSize !== null ? Number(submission.fileSize) : undefined,
     status: submission.status ? String(submission.status) : undefined,
     score: Number(submission.score ?? 0),
     feedback: String(submission.feedback ?? ""),
@@ -534,10 +545,21 @@ export async function updateAuthenticatedProfile(payload: {
   phone?: string;
   city?: string;
   address?: string;
+  profileImage?: File | null;
 }) {
+  const formData = new FormData();
+  if (payload.name !== undefined) formData.append("name", payload.name);
+  if (payload.email !== undefined) formData.append("email", payload.email);
+  if (payload.department !== undefined) formData.append("department", payload.department ?? "");
+  if (payload.bio !== undefined) formData.append("bio", payload.bio ?? "");
+  if (payload.phone !== undefined) formData.append("phone", payload.phone ?? "");
+  if (payload.city !== undefined) formData.append("city", payload.city ?? "");
+  if (payload.address !== undefined) formData.append("address", payload.address ?? "");
+  if (payload.profileImage) formData.append("profile_image", payload.profileImage);
+
   const response = await apiFetch("/api/v1/auth/me", {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    body: formData,
   });
 
   const data = await unwrapResponse<{ data: { user: UserProfile; branding?: TenantBranding; vendor?: VendorSummary } }>(response);
@@ -547,6 +569,41 @@ export async function updateAuthenticatedProfile(payload: {
     branding: data.data.branding ? normalizeBranding(data.data.branding as unknown as Record<string, unknown>) : null,
     vendor: data.data.vendor ? normalizeVendor(data.data.vendor as unknown as Record<string, unknown>) : null,
   };
+}
+
+export type UserUploadItem = {
+  id: string;
+  label?: string | null;
+  fileName: string;
+  fileMime?: string | null;
+  fileSize?: number | null;
+  fileUrl: string;
+  createdAt?: string | null;
+};
+
+export async function fetchMyUploadsFromBackend(): Promise<UserUploadItem[]> {
+  const response = await apiFetch("/api/v1/auth/me/uploads", { method: "GET" });
+  const payload = await unwrapResponse<{ data: UserUploadItem[] }>(response);
+  return payload.data ?? [];
+}
+
+export async function uploadMyFileToBackend(file: File, label?: string): Promise<UserUploadItem> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (label && label.trim()) formData.append("label", label.trim());
+
+  const response = await apiFetch("/api/v1/auth/me/uploads", {
+    method: "POST",
+    body: formData,
+  });
+
+  const payload = await unwrapResponse<{ data: UserUploadItem }>(response);
+  return payload.data;
+}
+
+export async function deleteMyUploadFromBackend(uploadId: string) {
+  const response = await apiFetch(`/api/v1/auth/me/uploads/${uploadId}`, { method: "DELETE" });
+  return unwrapResponse<{ message: string }>(response);
 }
 
 export async function fetchAuthenticatedBootstrap() {
@@ -1060,6 +1117,21 @@ export async function updateLiveClassStatusOnBackend(
   return unwrapResponse<{ data: unknown }>(response);
 }
 
+export async function markLiveClassRecordedOnBackend(
+  liveClassId: string,
+  payload?: { recordingUrl?: string; durationSeconds?: number }
+) {
+  const response = await apiFetch(`/api/v1/live-classes/${liveClassId}/mark-recorded`, {
+    method: "POST",
+    body: JSON.stringify({
+      recording_url: payload?.recordingUrl,
+      duration_seconds: payload?.durationSeconds
+    })
+  });
+
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
 export async function joinLiveClassOnBackend(liveClassId: string) {
   const response = await apiFetch(`/api/v1/live-classes/${liveClassId}/join`, {
     method: "POST"
@@ -1068,12 +1140,18 @@ export async function joinLiveClassOnBackend(liveClassId: string) {
   return unwrapResponse<{ data: unknown; meeting_url: string }>(response);
 }
 
-export async function submitAssessmentOnBackend(assessmentId: string, answerText: string) {
+export async function submitAssessmentOnBackend(assessmentId: string, answerText: string, submissionFile?: File | null) {
+  const formData = new FormData();
+  if (answerText.trim().length > 0) {
+    formData.append("answer_text", answerText);
+  }
+  if (submissionFile) {
+    formData.append("submission_file", submissionFile);
+  }
+
   const response = await apiFetch(`/api/v1/assessments/${assessmentId}/submit`, {
     method: "POST",
-    body: JSON.stringify({
-      answer_text: answerText
-    })
+    body: formData
   });
 
   const payload = await unwrapResponse<{ data: { submission: unknown } }>(response);
@@ -1235,6 +1313,22 @@ export async function fetchAdminCoursesFromBackend() {
 export async function fetchAdminTeachersFromBackend() {
   const response = await apiFetch("/api/v1/admin/teachers", { method: "GET" });
   return unwrapResponse<{ data: any[] }>(response);
+}
+
+export async function createAdminCourseOnBackend(payload: {
+  title: string;
+  category: string;
+  description: string;
+  price?: number;
+  level?: string;
+  status?: "draft" | "published";
+  teacher_id?: number;
+}) {
+  const response = await apiFetch("/api/v1/admin/courses", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return unwrapResponse<{ data: any }>(response);
 }
 
 export async function fetchCourseTeachersFromBackend(courseId: string) {

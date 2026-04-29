@@ -53,6 +53,7 @@ import {
   deleteCourseLessonOnBackend,
   reorderCourseLessonsOnBackend,
   updateLiveClassStatusOnBackend,
+  markLiveClassRecordedOnBackend,
   uploadLessonContentOnBackend,
   updateTenantBrandingOnBackend,
   uploadTeacherNote,
@@ -155,7 +156,7 @@ type MockLmsContextType = {
   deleteAssessment: (assessmentId: string) => Promise<void>;
   updateAssessmentQuestion: (assessmentId: string, questionId: string, payload: { prompt?: string; options?: string[]; answer?: string }) => Promise<void>;
   deleteAssessmentQuestion: (assessmentId: string, questionId: string) => Promise<void>;
-  submitAssessment: (assessmentId: string, studentName: string, answerText: string) => Promise<AssessmentSubmissionResult | null>;
+  submitAssessment: (assessmentId: string, studentName: string, answerText: string, submissionFile?: File | null) => Promise<AssessmentSubmissionResult | null>;
   scheduleLiveClass: (payload: ScheduleLiveClassPayload) => Promise<void>;
   setLiveClassStatus: (classId: string, status: "scheduled" | "live" | "recorded") => Promise<void>;
   issueCertificate: (studentName: string, courseId: string) => Promise<void>;
@@ -1173,9 +1174,9 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         )
       }));
     },
-    async submitAssessment(assessmentId, studentName, answerText) {
+    async submitAssessment(assessmentId, studentName, answerText, submissionFile) {
       if (currentUser) {
-        const response = await submitAssessmentOnBackend(assessmentId, answerText);
+        const response = await submitAssessmentOnBackend(assessmentId, answerText, submissionFile);
         await refreshBackendState();
         return response.submission
           ? {
@@ -1220,6 +1221,7 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
               assessmentId,
               studentName,
               answerText,
+              fileName: submissionFile?.name ?? null,
               score: evaluation.score,
               feedback: evaluation.feedback,
               passed: evaluation.passed,
@@ -1405,7 +1407,11 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
     },
     async setLiveClassStatus(classId, status) {
       if (currentUser) {
-        await updateLiveClassStatusOnBackend(classId, status);
+        if (status === "recorded") {
+          await markLiveClassRecordedOnBackend(classId);
+        } else {
+          await updateLiveClassStatusOnBackend(classId, status);
+        }
         await refreshBackendState();
         return;
       }

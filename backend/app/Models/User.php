@@ -123,4 +123,9 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class)
             ->withTimestamps();
     }
+
+    public function uploads(): HasMany
+    {
+        return $this->hasMany(UserUpload::class);
+    }
 }
