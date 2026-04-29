@@ -7,6 +7,7 @@ use App\Models\BillingProfile;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\JwtToken;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,7 +66,7 @@ class AuthController extends Controller
             ]
         );
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = JwtToken::issue($user);
 
         try {
             Mail::raw(
@@ -120,7 +121,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'User is blocked.'], 403);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = JwtToken::issue($user);
 
         return response()->json([
             'message' => 'Login successful.',
@@ -150,7 +151,10 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()?->currentAccessToken()?->delete();
+        $claims = $request->attributes->get('jwt_claims');
+        if (is_array($claims) && isset($claims['jti'], $claims['exp'])) {
+            JwtToken::revoke((string) $claims['jti'], (int) $claims['exp']);
+        }
 
         return response()->json([
             'message' => 'Logged out successfully.',

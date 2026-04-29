@@ -405,11 +405,18 @@ export function NavigationChrome() {
     };
 
     if (isAuthenticated) {
-      return [marketingMenu, catalogMenu, adminMenu, teacherMenu, studentMenu, authMenu];
+      const roleMenu =
+        currentUser?.role === "teacher"
+          ? teacherMenu
+          : currentUser?.role === "student"
+            ? studentMenu
+            : adminMenu;
+
+      return [marketingMenu, catalogMenu, roleMenu, authMenu];
     }
 
     return [marketingMenu, catalogMenu, authMenu];
-  }, [currentUser?.name, dashboardHref, isAuthenticated, workspaceLabel]);
+  }, [currentUser?.name, currentUser?.role, dashboardHref, isAuthenticated, workspaceLabel]);
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);

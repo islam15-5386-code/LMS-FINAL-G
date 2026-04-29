@@ -189,11 +189,15 @@ export default function AdminDashboardPage() {
           <div className="card">
             <h2 className="font-serif text-xl text-foreground mb-4">Quick Actions</h2>
             <div className="grid gap-2">
+              <QuickActionCard href="/admin/courses" icon={<Users className="w-5 h-5" />} label="Assign Teacher" description="Assign teacher to any course" color="#0ea5e9" />
+              <QuickActionCard href="/admin/courses" icon={<Users className="w-5 h-5" />} label="Remove Teacher" description="Remove teacher from assigned course" color="#ef4444" />
+              <QuickActionCard href="/admin/enrollments" icon={<Users className="w-5 h-5" />} label="Remove Student" description="Remove student from course or batch" color="#f97316" />
               <QuickActionCard href="/admin/users" icon={<Users className="w-5 h-5" />} label="Manage Users" description="Add or edit students and teachers" color="#3b82f6" />
-              <QuickActionCard href="/admin/courses" icon={<BookOpen className="w-5 h-5" />} label="Manage Courses" description="Publish, edit, or archive courses" color="#0f766e" />
-              <QuickActionCard href="/admin/certificates" icon={<Award className="w-5 h-5" />} label="Issue Certificates" description="Issue and verify certificates" color="#E8A020" />
-              <QuickActionCard href="/admin/reports/compliance" icon={<BarChart2 className="w-5 h-5" />} label="Compliance Reports" description="Export audit-ready reports" color="#7c3aed" />
-              <QuickActionCard href="/admin/live-classes" icon={<Video className="w-5 h-5" />} label="Live Classes" description="Schedule and manage sessions" color="#e11d48" />
+              <QuickActionCard href="/admin/courses" icon={<BookOpen className="w-5 h-5" />} label="Manage Course" description="Create, update, delete, publish courses" color="#0f766e" />
+              <QuickActionCard href="/admin/live-classes" icon={<Video className="w-5 h-5" />} label="Manage Class Schedule" description="Create, update, delete class schedules" color="#e11d48" />
+              <QuickActionCard href="/admin/billing" icon={<CreditCard className="w-5 h-5" />} label="Manage Payment" description="View, verify, and update payments" color="#22c55e" />
+              <QuickActionCard href="/admin/certificates" icon={<Award className="w-5 h-5" />} label="Manage Certificate" description="Generate, revoke, verify certificates" color="#E8A020" />
+              <QuickActionCard href="/admin/reports/compliance" icon={<BarChart2 className="w-5 h-5" />} label="View/Export Reports" description="Compliance and revenue report export" color="#7c3aed" />
             </div>
           </div>
 

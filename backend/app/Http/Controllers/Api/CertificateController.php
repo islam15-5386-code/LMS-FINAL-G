@@ -108,4 +108,18 @@ class CertificateController extends Controller
             'data' => LmsSupport::serializeCertificate($certificate->fresh()->load('user:id,name')),
         ]);
     }
+
+    public function verify(Request $request, Certificate $certificate): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin']);
+        abort_if($certificate->course?->tenant_id !== $user->tenant_id, 404, 'Certificate not found.');
+        $this->authorize('manage', $certificate);
+
+        return response()->json([
+            'data' => [
+                ...LmsSupport::serializeCertificate($certificate->load('user:id,name')),
+                'verified' => ! $certificate->revoked,
+            ],
+        ]);
+    }
 }

@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Carbon;
 
 class ReportsController extends Controller
@@ -20,6 +21,7 @@ class ReportsController extends Controller
         /** @var User $user */
         $user = $request->user();
         abort_unless($user->role === 'admin', 403, 'Forbidden.');
+        Gate::authorize('manage-reports');
 
         $end = $request->filled('end') ? Carbon::parse($request->string('end'))->endOfDay() : Carbon::now()->endOfDay();
         $start = $request->filled('start') ? Carbon::parse($request->string('start'))->startOfDay() : $end->copy()->subMonths(11)->startOfMonth();

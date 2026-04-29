@@ -11,6 +11,7 @@ use App\Models\LiveClassParticipant;
 use App\Models\LiveClassRecording;
 use App\Models\User;
 use App\Support\LmsSupport;
+use App\Services\FeatureLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,6 +20,10 @@ use Illuminate\Support\Str;
 
 class LiveClassController extends Controller
 {
+    public function __construct(private readonly FeatureLimitService $featureLimitService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         /** @var User $user */
@@ -54,6 +59,23 @@ class LiveClassController extends Controller
 
         $course = Course::query()->findOrFail($validated['course_id']);
         abort_if($course->tenant_id !== $user->tenant_id, 404, 'Course not found.');
+        if ($user->role === 'teacher') {
+            $isAssigned = $course->teacher_id === $user->id
+                || $course->teachers()->where('users.id', $user->id)->exists();
+
+            abort_if(! $isAssigned, 403, 'You cannot schedule a live class for this course.');
+        }
+
+        $planCaps = $this->featureLimitService->planCapabilities($this->featureLimitService->resolvePlanName($user));
+        $planLiveLimit = (int) ($planCaps['live_limit'] ?? 0);
+        $enrolledCount = max(1, $course->enrollments()->count());
+        if ($planLiveLimit > 0 && $enrolledCount > $planLiveLimit) {
+            return response()->json([
+                'message' => 'Participant limit exceeded for your current plan.',
+                'feature' => 'live_class_participant_cap',
+                'required_plan' => 'Professional',
+            ], 403);
+        }
 
         $startAt = Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['start_time'], config('app.timezone'));
         $endAt = Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['end_time'], config('app.timezone'));
@@ -85,7 +107,7 @@ class LiveClassController extends Controller
             'start_at' => $startAt,
             'ends_at' => $endAt,
             'duration_minutes' => $validated['duration_minutes'],
-            'participant_limit' => max(1, $course->enrollments()->count()),
+            'participant_limit' => $planLiveLimit > 0 ? min($enrolledCount, $planLiveLimit) : $enrolledCount,
             'reminder_24h' => true,
             'reminder_1h' => true,
             'reminder_24h_sent' => false,
@@ -224,6 +246,15 @@ class LiveClassController extends Controller
 
         abort_if(! $isEnrolled, 403, 'You are not enrolled in this course.');
 
+        $planCheck = $this->featureLimitService->check($user, 'live_class_participant_cap', ['live_class' => $liveClass]);
+        if (! ($planCheck['allowed'] ?? false)) {
+            return response()->json([
+                'message' => 'Participant limit exceeded',
+                'feature' => $planCheck['feature'],
+                'required_plan' => $planCheck['required_plan'],
+            ], 403);
+        }
+
         $participant = LiveClassParticipant::query()->updateOrCreate(
             [
                 'tenant_id' => $user->tenant_id,
@@ -315,6 +346,23 @@ class LiveClassController extends Controller
             'success' => true,
             'message' => 'Live class status updated successfully.',
             'data' => LmsSupport::serializeLiveClass($liveClass->fresh()->load(['participants', 'recordings'])),
+        ]);
+    }
+
+    public function destroy(Request $request, LiveClass $liveClass): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin']);
+        $this->authorize('manage', $liveClass);
+        abort_if($liveClass->tenant_id !== $user->tenant_id, 404, 'Live class not found.');
+
+        $title = $liveClass->title;
+        $liveClass->delete();
+
+        LmsSupport::audit($user, 'Deleted live class schedule', $title, $request->ip());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Live class deleted successfully.',
         ]);
     }
 

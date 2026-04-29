@@ -17,6 +17,10 @@ class Invoice extends Model
         'due_at',
         'paid_at',
         'payment_status',
+        'provider',
+        'provider_invoice_id',
+        'checkout_session_id',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -25,6 +29,7 @@ class Invoice extends Model
             'issued_at' => 'datetime',
             'due_at' => 'datetime',
             'paid_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 

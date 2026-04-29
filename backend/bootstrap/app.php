@@ -15,7 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Add tenant resolver early so request has tenant context for all API routes
-           $middleware->prependToGroup('api', App\Http\Middleware\TenantResolver::class);
+        $middleware->prependToGroup('api', App\Http\Middleware\TenantResolver::class);
+        $middleware->appendToGroup('api', App\Http\Middleware\EnsureRoleRouteAccess::class);
+        $middleware->alias([
+            'role' => App\Http\Middleware\EnsureUserRole::class,
+            'auth.jwt' => App\Http\Middleware\AuthenticateWithJwt::class,
+            'plan.limit' => App\Http\Middleware\CheckPlanLimit::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (AuthenticationException $exception, Request $request) {

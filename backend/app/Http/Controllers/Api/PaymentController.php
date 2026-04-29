@@ -18,7 +18,7 @@ class PaymentController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        abort_unless($user->role === 'admin', 403, 'Forbidden.');
+        $this->authorize('viewAny', Payment::class);
 
         $payments = Payment::query()
             ->where('tenant_id', $user->tenant_id)
@@ -52,7 +52,7 @@ class PaymentController extends Controller
         ]);
 
         $course = Course::query()->findOrFail($validated['course_id']);
-        // abort_if($course->tenant_id !== $user->tenant_id, 404, 'Resource not found.');
+        abort_if($course->tenant_id !== $user->tenant_id, 404, 'Resource not found.');
         abort_if($course->status !== 'published', 422, 'Only published courses can be enrolled from catalog.');
 
         // Verify amount
@@ -107,6 +107,33 @@ class PaymentController extends Controller
 
         return response()->json([
             'data' => $payment,
+        ]);
+    }
+
+    public function update(Request $request, Payment $payment): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $this->authorize('manage', $payment);
+
+        $validated = $request->validate([
+            'status' => ['sometimes', Rule::in(['pending', 'paid', 'failed', 'cancelled'])],
+            'transaction_id' => ['sometimes', 'string', 'max:255'],
+            'amount' => ['sometimes', 'numeric', 'min:0'],
+            'due_amount' => ['sometimes', 'numeric', 'min:0'],
+            'paid_at' => ['nullable', 'date'],
+        ]);
+
+        if (($validated['status'] ?? null) === 'paid' && ! isset($validated['paid_at'])) {
+            $validated['paid_at'] = now();
+        }
+
+        $payment->update($validated);
+        LmsSupport::audit($user, 'Updated payment', (string) $payment->transaction_id, $request->ip());
+
+        return response()->json([
+            'message' => 'Payment updated successfully.',
+            'data' => $payment->fresh()->load(['user:id,name,email', 'course:id,title']),
         ]);
     }
 }

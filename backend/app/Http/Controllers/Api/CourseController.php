@@ -98,7 +98,15 @@ class CourseController extends Controller
             'target_audience.*' => ['string', 'max:255'],
         ]);
 
-        $teacherId = $validated['teacher_id'] ?? ($user->role === 'teacher' ? $user->id : null);
+        $teacherId = $user->role === 'teacher' ? $user->id : ($validated['teacher_id'] ?? null);
+        if ($teacherId !== null) {
+            $teacher = User::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->where('role', 'teacher')
+                ->find($teacherId);
+
+            abort_if($teacher === null, 422, 'Selected teacher is not valid for this tenant.');
+        }
 
         $course = Course::query()->create([
             'tenant_id' => $user->tenant_id,
@@ -140,7 +148,7 @@ class CourseController extends Controller
     public function publish(Request $request, Course $course): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
 
         $course->update([
             'status' => 'published',
@@ -160,7 +168,7 @@ class CourseController extends Controller
     public function storeModule(Request $request, Course $course): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -184,7 +192,7 @@ class CourseController extends Controller
     public function updateModule(Request $request, Course $course, CourseModule $module): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id, 404, 'Module not found for this course.');
 
         $validated = $request->validate([
@@ -208,7 +216,7 @@ class CourseController extends Controller
     public function deleteModule(Request $request, Course $course, CourseModule $module): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id, 404, 'Module not found for this course.');
 
         $module->delete();
@@ -223,7 +231,7 @@ class CourseController extends Controller
     public function reorderModules(Request $request, Course $course): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
 
         $validated = $request->validate([
             'module_ids' => ['required', 'array'],
@@ -245,7 +253,7 @@ class CourseController extends Controller
     public function storeLesson(Request $request, Course $course, CourseModule $module): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id, 404, 'Module not found for this course.');
 
         $validated = $request->validate([
@@ -274,7 +282,7 @@ class CourseController extends Controller
     public function updateLesson(Request $request, Course $course, CourseModule $module, Lesson $lesson): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id || $lesson->course_module_id !== $module->id, 404, 'Lesson not found.');
 
         $validated = $request->validate([
@@ -302,7 +310,7 @@ class CourseController extends Controller
     public function deleteLesson(Request $request, Course $course, CourseModule $module, Lesson $lesson): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id || $lesson->course_module_id !== $module->id, 404, 'Lesson not found.');
 
         $lesson->delete();
@@ -317,7 +325,7 @@ class CourseController extends Controller
     public function reorderLessons(Request $request, Course $course, CourseModule $module): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id, 404, 'Module not found.');
 
         $validated = $request->validate([
@@ -359,7 +367,7 @@ class CourseController extends Controller
     public function uploadLessonContent(Request $request, Course $course, CourseModule $module, Lesson $lesson): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
         abort_if($module->course_id !== $course->id || $lesson->course_module_id !== $module->id, 404, 'Lesson not found for this course.');
 
         $validated = $request->validate([
@@ -386,7 +394,7 @@ class CourseController extends Controller
     public function toggleAssessmentGate(Request $request, Course $course): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
-        $this->guardTenantCourse($user, $course);
+        $this->guardManageCourse($user, $course);
 
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
@@ -472,6 +480,20 @@ class CourseController extends Controller
     private function guardTenantCourse(User $user, Course $course): void
     {
         abort_if($course->tenant_id !== $user->tenant_id, 404, 'Course not found.');
+    }
+
+    private function guardManageCourse(User $user, Course $course): void
+    {
+        $this->guardTenantCourse($user, $course);
+
+        if ($user->role !== 'teacher') {
+            return;
+        }
+
+        $isAssigned = $course->teacher_id === $user->id
+            || $course->teachers()->where('users.id', $user->id)->exists();
+
+        abort_if(! $isAssigned, 403, 'You are not assigned to this course.');
     }
 
     private function syncComplianceProgress(User $user, Course $course): void

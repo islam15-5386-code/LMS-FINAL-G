@@ -1057,7 +1057,11 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         ...current,
         assessments: current.assessments.map((assessment) =>
           assessment.id === assessmentId
-            ? { ...assessment, ...payload }
+            ? {
+                ...assessment,
+                title: payload.title ?? assessment.title,
+                type: (payload.type as typeof assessment.type | undefined) ?? assessment.type,
+              }
             : assessment
         ),
         auditEvents: [
@@ -1090,7 +1094,15 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
 
       setState((current) => ({
         ...current,
-        enrollments: current.enrollments.map((e) => (e.id === enrollmentId ? { ...e, ...payload } : e)),
+        enrollments: current.enrollments.map((e) =>
+          e.id === enrollmentId
+            ? {
+                ...e,
+                status: (payload.status as typeof e.status | undefined) ?? e.status,
+                progressPercentage: payload.progressPercentage ?? e.progressPercentage,
+              }
+            : e
+        ),
         auditEvents: [
           createAuditEvent("Admin", "Updated enrollment", enrollmentId, current.branding.tenantId, current.branding.vendorId),
           ...current.auditEvents
@@ -1238,7 +1250,17 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
 
       setState((current) => ({
         ...current,
-        users: current.users.map((u) => (u.id === userId ? { ...u, ...payload } : u)),
+        users: current.users.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                name: payload.name ?? u.name,
+                email: payload.email ?? u.email,
+                role: (payload.role as typeof u.role | undefined) ?? u.role,
+                department: payload.department ?? u.department,
+              }
+            : u
+        ),
         auditEvents: [
           createAuditEvent("Admin", "Updated user", userId, current.branding.tenantId, current.branding.vendorId),
           ...current.auditEvents
@@ -1325,6 +1347,21 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
       }
 
       setState((current) => ({
+        ...current,
+        notifications: [
+          {
+            id: uid("notif"),
+            tenantId: current.branding.tenantId,
+            vendorId: current.branding.vendorId,
+            audience: payload.audience as any,
+            type: payload.type as any,
+            message: payload.message,
+            createdAt: new Date().toISOString()
+          },
+          ...current.notifications
+        ]
+      }));
+    },
     async createUser(payload) {
       if (currentUser) {
         await createUserOnBackend(payload);
@@ -1342,7 +1379,7 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
             name: payload.name,
             email: payload.email,
             role: payload.role,
-            department: payload.department ?? null,
+            department: payload.department ?? undefined,
             profileImageUrl: null,
             bio: null,
             ratingAverage: null,
@@ -1353,21 +1390,6 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         auditEvents: [
           createAuditEvent("Admin", "Created user", payload.name, current.branding.tenantId, current.branding.vendorId),
           ...current.auditEvents
-        ]
-      }));
-    },
-        ...current,
-        notifications: [
-          {
-            id: uid("notif"),
-            tenantId: current.branding.tenantId,
-            vendorId: current.branding.vendorId,
-            audience: payload.audience as any,
-            type: payload.type as any,
-            message: payload.message,
-            createdAt: new Date().toISOString()
-          },
-          ...current.notifications
         ]
       }));
     },

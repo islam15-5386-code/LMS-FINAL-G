@@ -2,17 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Model;
 
 class Tenant extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
+        'slug',
         'subdomain',
+        'domain',
         'city',
         'logo_text',
+        'secondary_color',
         'primary_color',
         'accent_color',
         'support_email',
@@ -20,6 +26,8 @@ class Tenant extends Model
         'address',
         'phone',
         'logo_url',
+        'plan',
+        'settings_json',
         'plan_type',
         'status',
         'is_active',
@@ -80,5 +88,10 @@ class Tenant extends Model
     public function wishlists(): HasMany
     {
         return $this->hasMany(Wishlist::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(TenantSubscription::class);
     }
 }

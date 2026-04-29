@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import type { Role } from "@/lib/mock-lms";
 import { seatUtilizationPercent } from "@/lib/mock-lms";
 import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
+import { canAccessRolePath } from "@/lib/auth/role-access";
 
 import {
   AdminAiToolsPanel,
@@ -143,7 +144,12 @@ export function WorkspaceExperience({
     }
 
     if (currentUser && currentUser.role !== role) {
-      router.replace(dashboardPathForRole(currentUser.role));
+      router.replace(`/403?from=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (currentUser && !canAccessRolePath(currentUser.role, pathname)) {
+      router.replace(`/403?from=${encodeURIComponent(pathname)}`);
     }
   }, [authReady, currentUser, isAuthenticated, pathname, role, router]);
 

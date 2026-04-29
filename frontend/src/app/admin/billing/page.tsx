@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle, TrendingUp, Users, CreditCard, DollarSign } from "lucide-react";
 import { DashboardLayout, PageHeader } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import type { PlanTier } from "@/lib/mock-lms";
+import { createStripeCheckoutSessionOnBackend } from "@/lib/api/lms-backend";
 
 const PLANS: Array<{ id: PlanTier; label: string; price: number; seats: number; desc: string; features: string[] }> = [
   { 
@@ -34,6 +36,7 @@ const PLANS: Array<{ id: PlanTier; label: string; price: number; seats: number; 
 ];
 
 export default function AdminBillingPage() {
+  const router = useRouter();
   const { state, updatePlan } = useMockLms();
   const { billing, invoices } = state;
   const [saving, setSaving] = useState(false);
@@ -45,6 +48,17 @@ export default function AdminBillingPage() {
   async function handlePlanChange(planId: PlanTier) {
     setSaving(true);
     try {
+      const provider = process.env.NEXT_PUBLIC_PAYMENT_PROVIDER ?? "stripe";
+      if (provider === "stripe") {
+        const session = await createStripeCheckoutSessionOnBackend(planId);
+        if (session.data.url) {
+          window.location.assign(session.data.url);
+          return;
+        }
+        router.push("/admin/billing/success");
+        return;
+      }
+
       await updatePlan(planId);
       setAlert({ type: "success", msg: `Plan upgraded to ${planId} successfully.` });
       setTimeout(() => setAlert(null), 3000);

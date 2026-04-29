@@ -35,6 +35,13 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'price_id' => env('STRIPE_PRICE_ID'),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'pdf_extraction_enabled' => env('OPENAI_PDF_EXTRACTION_ENABLED', false),

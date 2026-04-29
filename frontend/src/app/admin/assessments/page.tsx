@@ -168,7 +168,6 @@ export default function AdminAssessmentsPage() {
             value={search}
             onChange={setSearch}
             placeholder="Search assessments…"
-            className="w-full"
           />
         </div>
         <button 

@@ -89,11 +89,8 @@ class AdminCourseManagementController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-
-        // Authorize: Admin or the course owner
-        if ($user->role !== 'admin' && $course->teacher_id !== $user->id) {
-            abort(403, 'Only admins or the course owner can assign teachers.');
-        }
+        $this->authorizeAdmin($request);
+        $this->authorize('assignTeacher', $course);
 
         $validated = $request->validate([
             'teacher_ids' => 'nullable|array',
@@ -128,10 +125,7 @@ class AdminCourseManagementController extends Controller
             }
         }
 
-        $course->teachers()->syncWithoutDetaching($teachers->pluck('id')->all());
-
-        // Sync tenant_id in pivot if needed (since syncWithoutDetaching doesn't easily set extra pivot attributes without a loop or specific logic)
-        // But our pivot has tenant_id. We should set it.
+        // Keep tenant_id explicit in pivot rows to satisfy strict multi-tenant constraints.
         foreach ($teachers as $teacher) {
             DB::table('course_teacher')
                 ->updateOrInsert(
@@ -149,6 +143,8 @@ class AdminCourseManagementController extends Controller
     public function removeTeacher(Request $request, Course $course, User $teacher): JsonResponse
     {
         $this->authorizeAdmin($request);
+        $this->authorize('assignTeacher', $course);
+        abort_unless($teacher->tenant_id === $course->tenant_id, 404, 'Teacher not found.');
 
         $course->teachers()->detach($teacher->id);
 
@@ -218,6 +214,8 @@ class AdminCourseManagementController extends Controller
     public function removeStudent(Request $request, Course $course, User $student): JsonResponse
     {
         $this->authorizeAdmin($request);
+        $this->authorize('removeStudent', $course);
+        abort_unless($student->tenant_id === $course->tenant_id, 404, 'Student not found.');
 
         $enrollment = Enrollment::query()
             ->where('course_id', $course->id)
@@ -240,5 +238,85 @@ class AdminCourseManagementController extends Controller
         if ($user->role !== 'admin') {
             abort(403, 'Only admins can perform this action.');
         }
+    }
+
+    public function storeCourse(Request $request): JsonResponse
+    {
+        /** @var User $admin */
+        $admin = $request->user();
+        $this->authorizeAdmin($request);
+        $this->authorize('create', Course::class);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'category' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'level' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', 'in:draft,published'],
+            'teacher_id' => ['nullable', 'exists:users,id'],
+        ]);
+
+        $teacherId = isset($validated['teacher_id']) ? (int) $validated['teacher_id'] : null;
+        if ($teacherId) {
+            $teacher = User::query()->findOrFail($teacherId);
+            abort_unless($teacher->tenant_id === $admin->tenant_id && $teacher->role === 'teacher', 422, 'Invalid teacher.');
+        }
+
+        $course = Course::query()->create([
+            'tenant_id' => $admin->tenant_id,
+            'teacher_id' => $teacherId,
+            'title' => $validated['title'],
+            'slug' => \Illuminate\Support\Str::slug($validated['title'] . '-' . now()->timestamp),
+            'category' => $validated['category'],
+            'description' => $validated['description'],
+            'price_bdt' => (int) ($validated['price'] ?? 0),
+            'price' => $validated['price'] ?? 0,
+            'level' => $validated['level'] ?? 'Beginner',
+            'status' => $validated['status'] ?? 'draft',
+            'published_at' => ($validated['status'] ?? 'draft') === 'published' ? now() : null,
+            'thumbnail_url' => 'https://cdn.example.com/thumbnails/' . \Illuminate\Support\Str::slug($validated['title']) . '.jpg',
+            'enrollment_count' => 0,
+            'what_you_will_learn' => [],
+            'requirements' => [],
+            'target_audience' => [],
+        ]);
+
+        return response()->json(['data' => $course], 201);
+    }
+
+    public function updateCourse(Request $request, Course $course): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+        $this->authorize('update', $course);
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'string', 'max:255'],
+            'category' => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'string'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'level' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', 'in:draft,published'],
+        ]);
+
+        if (array_key_exists('price', $validated)) {
+            $validated['price_bdt'] = (int) ($validated['price'] ?? 0);
+        }
+        if (($validated['status'] ?? null) === 'published' && $course->published_at === null) {
+            $validated['published_at'] = now();
+        }
+
+        $course->update($validated);
+
+        return response()->json(['data' => $course->fresh()]);
+    }
+
+    public function destroyCourse(Request $request, Course $course): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+        $this->authorize('delete', $course);
+        $course->delete();
+
+        return response()->json(['message' => 'Course deleted successfully.']);
     }
 }

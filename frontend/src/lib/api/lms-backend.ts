@@ -386,9 +386,13 @@ async function apiFetch(path: string, init: RequestInit = {}, retry = true) {
   try {
     const extraHeaders: Record<string, string> = {};
     if (typeof window !== "undefined") {
-      const host = window.location.host || '';
-      if ((host.includes('localhost') || host.includes('127.0.0.1')) && host.split('.')[0]) {
-        extraHeaders['X-Tenant'] = host.split('.')[0];
+      const hostname = window.location.hostname || "";
+      const configuredTenant = process.env.NEXT_PUBLIC_TENANT_SUBDOMAIN;
+
+      if (hostname.endsWith(".localhost")) {
+        extraHeaders["X-Tenant"] = hostname.split(".")[0];
+      } else if (configuredTenant) {
+        extraHeaders["X-Tenant"] = configuredTenant;
       }
     }
 
@@ -418,7 +422,21 @@ async function unwrapResponse<T>(response: Response): Promise<T> {
   const payload = await parseJsonSafe(response);
 
   if (!response.ok) {
-    throw new Error(typeof payload.message === "string" ? payload.message : "Backend request failed.");
+    const message = typeof payload.message === "string" ? payload.message : "Backend request failed.";
+    const feature = typeof payload.feature === "string" ? payload.feature : "";
+    const requiredPlan = typeof payload.required_plan === "string" ? payload.required_plan : "";
+
+    if (response.status === 403 && feature === "ai_access") {
+      throw new Error(`Upgrade required: ${requiredPlan || "higher"} plan is needed for AI access.`);
+    }
+    if (response.status === 403 && feature === "live_class_participant_cap") {
+      throw new Error("Participant limit exceeded. Upgrade required to increase live class capacity.");
+    }
+    if (response.status === 403 && feature === "api_access") {
+      throw new Error("Professional plan required for API access.");
+    }
+
+    throw new Error(message);
   }
 
   return payload as T;
@@ -1094,6 +1112,16 @@ export async function initiateSslCommerzPayment(courseId: string) {
   return unwrapResponse<{ gateway_url: string }>(response);
 }
 
+export async function createStripeCheckoutSessionOnBackend(plan?: "Starter" | "Growth" | "Professional") {
+  const response = await apiFetch("/api/v1/payments/stripe/checkout-session", {
+    method: "POST",
+    body: JSON.stringify({
+      plan
+    })
+  });
+  return unwrapResponse<{ message: string; data: { id: string | null; url: string | null } }>(response);
+}
+
 export async function createPaymentOnBackend(courseId: string, amount: number, transactionId: string) {
   const response = await apiFetch("/api/v1/payments", {
     method: "POST",
@@ -1110,6 +1138,34 @@ export async function fetchPaymentsOnBackend(status?: string) {
   const query = status && status !== "all" ? `?status=${status}` : "";
   const response = await apiFetch(`/api/v1/payments${query}`, { method: "GET" });
   return unwrapResponse<{ data: unknown[] }>(response);
+}
+
+export async function updateAdminPaymentOnBackend(paymentId: string, payload: {
+  status?: "pending" | "paid" | "failed" | "cancelled";
+  transaction_id?: string;
+  amount?: number;
+  due_amount?: number;
+  paid_at?: string | null;
+}) {
+  const response = await apiFetch(`/api/v1/admin/payments/${paymentId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return unwrapResponse<{ message: string; data: unknown }>(response);
+}
+
+export async function verifyCertificateOnBackend(certificateId: string) {
+  const response = await apiFetch(`/api/v1/admin/certificates/${certificateId}/verify`, {
+    method: "GET",
+  });
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function deleteLiveClassScheduleOnBackend(liveClassId: string) {
+  const response = await apiFetch(`/api/v1/admin/live-classes/${liveClassId}`, {
+    method: "DELETE",
+  });
+  return unwrapResponse<{ success: boolean; message: string }>(response);
 }
 
 export async function fetchPaymentInvoiceOnBackend(paymentId: string) {

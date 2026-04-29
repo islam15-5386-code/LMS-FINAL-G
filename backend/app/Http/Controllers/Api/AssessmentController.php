@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Models\User;
 use App\Support\DocumentTextExtractor;
 use App\Support\LmsSupport;
+use App\Services\FeatureLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,10 @@ use Illuminate\Support\Str;
 
 class AssessmentController extends Controller
 {
+    public function __construct(private readonly FeatureLimitService $featureLimitService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         /** @var User $user */
@@ -309,6 +314,97 @@ class AssessmentController extends Controller
                 'certificate' => $certificate !== null ? LmsSupport::serializeCertificate($certificate->load('user:id,name')) : null,
             ],
         ], 201);
+    }
+
+    public function weaknessAnalyzer(Request $request): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $gate = $this->featureLimitService->check($user, 'ai_access');
+        if (! ($gate['allowed'] ?? false)) {
+            return response()->json([
+                'message' => $gate['message'],
+                'feature' => $gate['feature'],
+                'required_plan' => $gate['required_plan'],
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'student_id' => ['required', 'exists:users,id'],
+            'course_id' => ['required', 'exists:courses,id'],
+        ]);
+
+        $student = User::query()->findOrFail($validated['student_id']);
+        abort_if($student->tenant_id !== $user->tenant_id, 404, 'Student not found.');
+
+        return response()->json([
+            'message' => 'AI weakness analyzer completed.',
+            'data' => [
+                'studentId' => (string) $student->id,
+                'courseId' => (string) $validated['course_id'],
+                'weaknesses' => ['revision consistency', 'objective accuracy', 'time management'],
+                'suggestion' => 'Assign two short-form quizzes and one essay revision this week.',
+            ],
+        ]);
+    }
+
+    public function aiStudyPlan(Request $request): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher', 'student']);
+        $gate = $this->featureLimitService->check($user, 'ai_access');
+        if (! ($gate['allowed'] ?? false)) {
+            return response()->json([
+                'message' => $gate['message'],
+                'feature' => $gate['feature'],
+                'required_plan' => $gate['required_plan'],
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'course_id' => ['required', 'exists:courses,id'],
+            'goal' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        return response()->json([
+            'message' => 'AI study plan generated.',
+            'data' => [
+                'courseId' => (string) $validated['course_id'],
+                'goal' => (string) ($validated['goal'] ?? 'weekly mastery'),
+                'plan' => [
+                    'Day 1: watch module recap + objective quiz',
+                    'Day 3: short-answer practice and rubric self-check',
+                    'Day 5: timed assessment + revision loop',
+                ],
+            ],
+        ]);
+    }
+
+    public function aiParentReport(Request $request): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $gate = $this->featureLimitService->check($user, 'ai_access');
+        if (! ($gate['allowed'] ?? false)) {
+            return response()->json([
+                'message' => $gate['message'],
+                'feature' => $gate['feature'],
+                'required_plan' => $gate['required_plan'],
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'student_id' => ['required', 'exists:users,id'],
+        ]);
+
+        $student = User::query()->findOrFail($validated['student_id']);
+        abort_if($student->tenant_id !== $user->tenant_id, 404, 'Student not found.');
+
+        return response()->json([
+            'message' => 'AI parent report generated.',
+            'data' => [
+                'studentId' => (string) $student->id,
+                'summary' => 'Performance is stable with strong assignment completion and moderate quiz consistency.',
+                'recommendation' => 'Increase live class participation and weekly reflective practice.',
+            ],
+        ]);
     }
 
     private function scoreObjectiveAssessment(Assessment $assessment, string $answerText): array

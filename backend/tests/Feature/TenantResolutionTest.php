@@ -45,7 +45,8 @@ class TenantResolutionTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->withHeader('Host', 'brac.localhost')
+        $response = $this->withHeader('Host', 'localhost')
+            ->withHeader('X-Tenant', 'brac')
             ->getJson('/api/tenant/current');
 
         $response->assertStatus(200);
@@ -74,7 +75,8 @@ class TenantResolutionTest extends TestCase
             'status' => 'inactive',
         ]);
 
-        $response = $this->withHeader('Host', 'tepantor.localhost')
+        $response = $this->withHeader('Host', 'localhost')
+            ->withHeader('X-Tenant', 'tepantor')
             ->getJson('/api/tenant/current');
 
         $response->assertStatus(403);
@@ -114,7 +116,8 @@ class TenantResolutionTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->withHeader('Host', 'brac.localhost')
+        $response = $this->withHeader('Host', 'localhost')
+            ->withHeader('X-Tenant', 'brac')
             ->postJson('/api/v1/auth/login', [
                 'email' => 'admin@diu.test',
                 'password' => 'password',

@@ -21,9 +21,37 @@ use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\SslCommerzPaymentController;
 use App\Http\Controllers\Api\ReportsController;
+use App\Http\Controllers\Api\StripePaymentController;
 use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\AdminCourseManagementController;
+use App\Http\Controllers\Api\ExternalApiController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/tenant/current', function (\Illuminate\Http\Request $request) {
+    $tenant = $request->attributes->get('tenant');
+
+    if ($tenant === null) {
+        return response()->json([
+            'message' => 'Tenant not found.',
+            'code' => 'TENANT_NOT_FOUND',
+        ], 404);
+    }
+
+    if (($tenant->status ?? 'active') !== 'active' || (isset($tenant->is_active) && ! $tenant->is_active)) {
+        return response()->json([
+            'message' => 'Tenant is inactive.',
+            'code' => 'TENANT_INACTIVE',
+        ], 403);
+    }
+
+    return response()->json([
+        'id' => $tenant->id,
+        'name' => $tenant->name,
+        'slug' => $tenant->slug ?? $tenant->subdomain,
+        'subdomain' => $tenant->subdomain,
+        'status' => $tenant->status ?? 'active',
+    ]);
+});
 
 Route::prefix('v1')->group(function (): void {
     Route::post('/auth/register', [AuthController::class, 'register']);
@@ -36,8 +64,9 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/payments/ssl/fail', [SslCommerzPaymentController::class, 'fail']);
     Route::post('/payments/ssl/cancel', [SslCommerzPaymentController::class, 'cancel']);
     Route::post('/payments/ssl/ipn', [SslCommerzPaymentController::class, 'ipn']);
+    Route::post('/payments/stripe/webhook', [StripePaymentController::class, 'webhook']);
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware('auth.jwt')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
@@ -59,7 +88,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/courses/{course}', [CourseController::class, 'show']);
         Route::get('/courses/{course}/students', [CourseController::class, 'students']);
         Route::patch('/courses/{course}/assessment-gate', [CourseController::class, 'toggleAssessmentGate']);
-        Route::post('/courses/{course}/assign-teacher', [AdminCourseManagementController::class, 'assignTeachers']);
+        Route::post('/courses/{course}/assign-teacher', [AdminCourseManagementController::class, 'assignTeachers'])->middleware('role:admin');
         Route::post('/courses/{course}/publish', [CourseController::class, 'publish']);
         Route::post('/courses/{course}/modules', [CourseController::class, 'storeModule']);
         Route::put('/courses/{course}/modules/{module}', [CourseController::class, 'updateModule']);
@@ -73,15 +102,18 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/courses/{course}/lessons/{lesson}/complete', [CourseController::class, 'completeLesson']);
 
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
-        Route::get('/student/my-courses', [EnrollmentController::class, 'myCourses']);
-        Route::get('/student/courses', [EnrollmentController::class, 'myCourses']);
-        Route::get('/student/my-submissions', [EnrollmentController::class, 'mySubmissions']);
-        Route::get('/student/live-classes', [LiveClassController::class, 'index']);
+        Route::middleware('role:student')->group(function (): void {
+            Route::get('/student/my-courses', [EnrollmentController::class, 'myCourses']);
+            Route::get('/student/courses', [EnrollmentController::class, 'myCourses']);
+            Route::get('/student/my-submissions', [EnrollmentController::class, 'mySubmissions']);
+            Route::get('/student/live-classes', [LiveClassController::class, 'index']);
+        });
 
         Route::get('/payments', [PaymentController::class, 'index']);
         Route::post('/payments', [PaymentController::class, 'store']);
         Route::get('/payments/{payment}', [PaymentController::class, 'show']);
         Route::post('/payments/ssl/initiate', [SslCommerzPaymentController::class, 'initiate']);
+        Route::post('/payments/stripe/checkout-session', [StripePaymentController::class, 'checkoutSession']);
 
         Route::post('/enrollments', [EnrollmentController::class, 'store']);
         Route::patch('/enrollments/{enrollment}', [EnrollmentController::class, 'update']);
@@ -90,7 +122,7 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/wishlists/{course}', [WishlistController::class, 'destroy']);
 
         Route::get('/assessments', [AssessmentController::class, 'index']);
-        Route::post('/assessments/generate', [AssessmentController::class, 'generate']);
+        Route::post('/assessments/generate', [AssessmentController::class, 'generate'])->middleware('plan.limit:ai_access');
         Route::get('/assessments/{assessment}', [AssessmentController::class, 'show']);
         Route::put('/assessments/{assessment}', [AssessmentController::class, 'update']);
         Route::delete('/assessments/{assessment}', [AssessmentController::class, 'destroy']);
@@ -98,29 +130,33 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/assessments/{assessment}/questions/{question}', [AssessmentController::class, 'updateQuestion']);
         Route::delete('/assessments/{assessment}/questions/{question}', [AssessmentController::class, 'deleteQuestion']);
         Route::post('/assessments/{assessment}/submit', [AssessmentController::class, 'submit']);
-        Route::post('/teacher/notes/upload', [AssessmentController::class, 'uploadNotes']);
-        Route::get('/teacher/question-bank/fallback', [AssessmentController::class, 'fallbackBanks']);
-        Route::post('/teacher/assessments/generate', [AssessmentController::class, 'generate']);
+        Route::middleware('role:teacher')->group(function (): void {
+            Route::post('/teacher/notes/upload', [AssessmentController::class, 'uploadNotes']);
+            Route::get('/teacher/question-bank/fallback', [AssessmentController::class, 'fallbackBanks']);
+            Route::post('/teacher/assessments/generate', [AssessmentController::class, 'generate'])->middleware('plan.limit:ai_access');
+        });
+        Route::post('/ai/weakness-analyzer', [AssessmentController::class, 'weaknessAnalyzer'])->middleware('plan.limit:ai_access');
+        Route::post('/ai/study-plan', [AssessmentController::class, 'aiStudyPlan'])->middleware('plan.limit:ai_access');
+        Route::post('/ai/parent-report', [AssessmentController::class, 'aiParentReport'])->middleware('plan.limit:ai_access');
 
         Route::get('/live-classes', [LiveClassController::class, 'index']);
-        Route::post('/live-classes', [LiveClassController::class, 'store']);
         Route::get('/live-classes/{liveClass}', [LiveClassController::class, 'show']);
         Route::post('/live-classes/{liveClass}/go-live', [LiveClassController::class, 'goLive']);
         Route::post('/live-classes/{liveClass}/complete', [LiveClassController::class, 'complete']);
         Route::post('/live-classes/{liveClass}/mark-recorded', [LiveClassController::class, 'markRecorded']);
         Route::post('/live-classes/{liveClass}/join', [LiveClassController::class, 'join']);
         Route::post('/live-classes/{liveClass}/leave', [LiveClassController::class, 'leave']);
-        Route::patch('/live-classes/{liveClass}/status', [LiveClassController::class, 'updateStatus']);
         Route::get('/live-classes/{liveClass}/attendance', [AttendanceController::class, 'index']);
         Route::post('/live-classes/{liveClass}/attendance', [AttendanceController::class, 'store']);
 
         Route::get('/reports/compliance', [ComplianceController::class, 'index']);
-    Route::get('/reports/revenue', [ReportsController::class, 'revenue']);
+        Route::get('/reports/revenue', [ReportsController::class, 'revenue']);
         Route::get('/reports/compliance/export/csv', [ComplianceController::class, 'exportCsv']);
         Route::get('/reports/compliance/export/pdf', [ComplianceController::class, 'exportPdf']);
         Route::post('/reports/compliance/reminders', [ComplianceController::class, 'sendReminders']);
 
-        Route::post('/emails/send', [EmailController::class, 'send']);
+        Route::post('/emails/send', [EmailController::class, 'send'])->middleware('plan.limit:api_access');
+        Route::get('/external/api/status', [ExternalApiController::class, 'status'])->middleware('plan.limit:api_access');
 
         Route::get('/certificates', [CertificateController::class, 'index']);
         Route::post('/certificates', [CertificateController::class, 'store']);
@@ -135,18 +171,39 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/announcements', [NotificationController::class, 'store']);
         Route::get('/audit-events', [AuditController::class, 'index']);
         // Admin user management
-        Route::post('/users', [UserManagementController::class, 'store']);
-        Route::get('/admin/users/{user}', [UserManagementController::class, 'show']);
-        Route::put('/admin/users/{user}', [UserManagementController::class, 'update']);
-        Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
-        Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
+        Route::middleware('role:admin')->group(function (): void {
+            Route::post('/users', [UserManagementController::class, 'store']);
+            Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus']);
+            Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
+            // Admin-only class schedule management
+            Route::post('/live-classes', [LiveClassController::class, 'store']);
+            Route::patch('/live-classes/{liveClass}/status', [LiveClassController::class, 'updateStatus']);
+            // Admin-only teacher assignment and student removal
+            Route::post('/courses/{course}/assign-teacher', [AdminCourseManagementController::class, 'assignTeachers']);
+        });
         // Admin course management
-        Route::get('/admin/courses', [AdminCourseManagementController::class, 'index']);
-        Route::get('/admin/teachers', [AdminCourseManagementController::class, 'teachers']);
-        Route::get('/admin/courses/{course}/teachers', [AdminCourseManagementController::class, 'courseTeachers']);
-        Route::post('/admin/courses/{course}/teachers', [AdminCourseManagementController::class, 'assignTeachers']);
-        Route::delete('/admin/courses/{course}/teachers/{teacher}', [AdminCourseManagementController::class, 'removeTeacher']);
-        Route::get('/admin/courses/{course}/students', [AdminCourseManagementController::class, 'courseStudents']);
-        Route::delete('/admin/courses/{course}/students/{student}', [AdminCourseManagementController::class, 'removeStudent']);
+        Route::prefix('admin')->middleware('role:admin')->group(function (): void {
+            Route::get('/users/{user}', [UserManagementController::class, 'show']);
+            Route::put('/users/{user}', [UserManagementController::class, 'update']);
+            Route::get('/courses', [AdminCourseManagementController::class, 'index']);
+            Route::post('/courses', [AdminCourseManagementController::class, 'storeCourse']);
+            Route::put('/courses/{course}', [AdminCourseManagementController::class, 'updateCourse']);
+            Route::delete('/courses/{course}', [AdminCourseManagementController::class, 'destroyCourse']);
+            Route::get('/teachers', [AdminCourseManagementController::class, 'teachers']);
+            Route::get('/courses/{course}/teachers', [AdminCourseManagementController::class, 'courseTeachers']);
+            Route::post('/courses/{course}/teachers', [AdminCourseManagementController::class, 'assignTeachers']);
+            Route::delete('/courses/{course}/teachers/{teacher}', [AdminCourseManagementController::class, 'removeTeacher']);
+            Route::get('/courses/{course}/students', [AdminCourseManagementController::class, 'courseStudents']);
+            Route::delete('/courses/{course}/students/{student}', [AdminCourseManagementController::class, 'removeStudent']);
+            Route::get('/payments', [PaymentController::class, 'index']);
+            Route::get('/payments/{payment}', [PaymentController::class, 'show']);
+            Route::patch('/payments/{payment}', [PaymentController::class, 'update']);
+            Route::get('/certificates/{certificate}/verify', [CertificateController::class, 'verify']);
+            Route::delete('/live-classes/{liveClass}', [LiveClassController::class, 'destroy']);
+            Route::get('/reports/revenue', [ReportsController::class, 'revenue']);
+            Route::get('/reports/compliance', [ComplianceController::class, 'index']);
+            Route::get('/reports/compliance/export/csv', [ComplianceController::class, 'exportCsv']);
+            Route::get('/reports/compliance/export/pdf', [ComplianceController::class, 'exportPdf']);
+        });
     });
 });

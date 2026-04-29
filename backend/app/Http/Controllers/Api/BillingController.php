@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BillingProfile;
 use App\Models\Invoice;
+use App\Models\SubscriptionPlan;
+use App\Models\TenantSubscription;
 use App\Models\User;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
@@ -48,6 +50,28 @@ class BillingController extends Controller
                 'overage_per_seat' => $selectedPlan['overage_per_seat'],
                 'billing_status' => 'paid',
                 'next_billing_at' => now()->addMonth()->startOfMonth(),
+            ]
+        );
+
+        $user->tenant->update(['plan_type' => $validated['plan']]);
+        $planRecord = SubscriptionPlan::query()->firstOrCreate(
+            ['name' => $validated['plan']],
+            [
+                'price' => $selectedPlan['price'],
+                'student_limit' => $selectedPlan['seat_limit'],
+                'ai_access' => (bool) ($selectedPlan['ai_access'] ?? false),
+                'live_class_limit' => (int) ($selectedPlan['live_limit'] ?? 0),
+                'white_label_enabled' => (bool) ($selectedPlan['white_label'] ?? false),
+                'overage_fee' => $selectedPlan['overage_per_seat'],
+            ]
+        );
+        TenantSubscription::query()->updateOrCreate(
+            ['tenant_id' => $user->tenant_id],
+            [
+                'plan_id' => $planRecord->id,
+                'status' => 'active',
+                'started_at' => now(),
+                'provider' => env('PAYMENT_PROVIDER', 'stripe'),
             ]
         );
 

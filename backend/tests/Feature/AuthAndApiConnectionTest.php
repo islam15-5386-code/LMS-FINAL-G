@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\Invoice;
+use App\Models\BillingProfile;
 use App\Models\User;
 use App\Models\Wishlist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -207,6 +208,7 @@ class AuthAndApiConnectionTest extends TestCase
     public function test_student_can_self_enroll_in_published_course(): void
     {
         $student = User::query()->where('email', 'student@example.com')->firstOrFail();
+        BillingProfile::query()->where('tenant_id', $student->tenant_id)->update(['billing_status' => 'paid']);
         $course = Course::query()
             ->where('tenant_id', $student->tenant_id)
             ->where('status', 'published')

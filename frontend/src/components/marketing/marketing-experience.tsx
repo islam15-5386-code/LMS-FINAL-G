@@ -550,7 +550,6 @@ export function HomeExperience() {
     if (!categoryTabs.includes(activeCategory)) {
       setActiveCategory("All");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryTabs.join("|")]);
 
   function courseHref(course: (typeof coursesForHome)[number]) {

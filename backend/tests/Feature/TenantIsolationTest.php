@@ -16,11 +16,17 @@ class TenantIsolationTest extends TestCase
     {
         $tenantA = Tenant::factory()->create(['subdomain' => 'tenant-a']);
         $tenantB = Tenant::factory()->create(['subdomain' => 'tenant-b']);
+        $userA = User::factory()->create([
+            'tenant_id' => $tenantA->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
 
         $courseB = Course::factory()->create(['tenant_id' => $tenantB->id, 'title' => 'Secret B']);
 
         // Make request as tenant A host
-        $response = $this->withHeader('Host', 'tenant-a.localhost')
+        $response = $this->actingAs($userA, 'sanctum')
+            ->withHeader('Host', 'tenant-a.localhost')
             ->getJson('/api/v1/courses');
 
         $response->assertStatus(200);
@@ -31,10 +37,16 @@ class TenantIsolationTest extends TestCase
     {
         $tenantA = Tenant::factory()->create(['subdomain' => 'tenant-a']);
         $tenantB = Tenant::factory()->create(['subdomain' => 'tenant-b']);
+        $userA = User::factory()->create([
+            'tenant_id' => $tenantA->id,
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
 
         $userB = User::factory()->create(['tenant_id' => $tenantB->id, 'email' => 'b@example.com']);
 
-        $response = $this->withHeader('Host', 'tenant-a.localhost')
+        $response = $this->actingAs($userA, 'sanctum')
+            ->withHeader('Host', 'tenant-a.localhost')
             ->getJson('/api/v1/users');
 
         $response->assertStatus(200);

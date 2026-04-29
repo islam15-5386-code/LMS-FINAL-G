@@ -13,7 +13,8 @@ class TenantResolver
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $host = $request->getHost();
+        $host = (string) ($request->header('host') ?: $request->getHost());
+        $host = explode(':', $host)[0];
 
         // Extract subdomain. For local dev hosts like diu.localhost:3000, subdomain is first segment
         $subdomain = $this->extractSubdomain($host);
