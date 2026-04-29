@@ -44,7 +44,9 @@ import {
   updateCourseLessonOnBackend,
   deleteCourseLessonOnBackend,
   reorderCourseLessonsOnBackend,
-  uploadLessonContentOnBackend
+  uploadLessonContentOnBackend,
+  fetchAuthenticatedProfile,
+  updateAuthenticatedProfile
 } from "@/lib/api/lms-backend";
 
 import {
@@ -339,10 +341,16 @@ export function CourseWorkbench({ defaultCourseId, onRefresh }: { defaultCourseI
 
 export function ContentUploadsPanel() {
   const { state } = useMockLms();
+  const [backendCourses, setBackendCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [uploadStatus, setUploadStatus] = useState("");
   const [showAllLessons, setShowAllLessons] = useState(false);
-  const lessons = state.courses.flatMap((course) =>
+  const courses = backendCourses.length ? backendCourses : state.courses;
+  const lessons = courses.flatMap((course) =>
     course.modules.flatMap((module) =>
       module.lessons.map((lesson) => ({
+        courseId: course.id,
+        moduleId: module.id,
         courseTitle: course.title,
         moduleTitle: module.title,
         lesson
@@ -351,10 +359,39 @@ export function ContentUploadsPanel() {
   );
   const visibleLessons = showAllLessons ? lessons : lessons.slice(0, 5);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCourses() {
+      setIsLoading(true);
+      try {
+        const loaded = await fetchCoursesFromBackend();
+        if (!cancelled) {
+          setBackendCourses(loaded);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setUploadStatus(error instanceof Error ? error.message : "Could not load lesson data from backend.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadCourses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Section title="Content uploads" subtitle="Teacher lesson materials, media files, and assignment assets stay organized at the lesson level.">
+      {isLoading ? <p className="text-sm text-muted-foreground">Loading lesson content from backend...</p> : null}
       <div className="grid gap-4">
-        {visibleLessons.map(({ courseTitle, moduleTitle, lesson }) => (
+        {visibleLessons.map(({ courseId, moduleId, courseTitle, moduleTitle, lesson }) => (
           <div key={lesson.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-4 dark:border-white/8 dark:bg-[#13212a]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -371,9 +408,34 @@ export function ContentUploadsPanel() {
                 ? `Stored file: ${lesson.contentOriginalName}`
                 : "Use the Modules & Lessons workspace to attach PDF, DOCX, image, or media content to this lesson."}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                accept=".pdf,.mp4,.docx,.jpg,.jpeg,.png,.webp"
+                className="max-w-[18rem] text-xs"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    return;
+                  }
+
+                  try {
+                    await uploadLessonContentOnBackend(courseId, moduleId, lesson.id, file);
+                    setUploadStatus(`${file.name} uploaded to ${lesson.title}.`);
+                    const loaded = await fetchCoursesFromBackend();
+                    setBackendCourses(loaded);
+                  } catch (error) {
+                    setUploadStatus(error instanceof Error ? error.message : "Upload failed.");
+                  } finally {
+                    event.target.value = "";
+                  }
+                }}
+              />
+            </div>
           </div>
         ))}
       </div>
+      {uploadStatus ? <p className="mt-3 text-sm text-muted-foreground">{uploadStatus}</p> : null}
       {lessons.length > 5 ? <SeeMoreButton expanded={showAllLessons} remaining={lessons.length - 5} onClick={() => setShowAllLessons((current) => !current)} /> : null}
     </Section>
   );
@@ -1140,21 +1202,77 @@ export function TeacherStudentPerformancePanel() {
 }
 
 export function TeacherSettingsPanel() {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    department: "",
+    bio: "",
+  });
+  const [status, setStatus] = useState("Loading profile from backend...");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      try {
+        const profile = await fetchAuthenticatedProfile();
+        if (cancelled) {
+          return;
+        }
+
+        setForm({
+          name: profile.user.name ?? "",
+          email: profile.user.email ?? "",
+          department: profile.user.department ?? "",
+          bio: profile.user.bio ?? "",
+        });
+        setStatus("Profile synced with database.");
+      } catch (error) {
+        if (!cancelled) {
+          setStatus(error instanceof Error ? error.message : "Could not load teacher profile.");
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Section title="Teacher settings" subtitle="Working preference controls for notifications, templates, and review cadence.">
       <div className="grid gap-3 md:grid-cols-2">
-        <TextInput defaultValue="Nafis Hasan" />
-        <TextInput defaultValue="nafis@betopiaacademy.com" />
-        <SelectInput defaultValue="Immediate">
-          <option>Immediate</option>
-          <option>Daily digest</option>
-          <option>Weekly digest</option>
-        </SelectInput>
-        <SelectInput defaultValue="Strict">
-          <option>Strict rubric</option>
-          <option>Balanced rubric</option>
-          <option>Loose rubric</option>
-        </SelectInput>
+        <TextInput value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Teacher name" />
+        <TextInput value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="Teacher email" />
+        <TextInput value={form.department} onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))} placeholder="Department" />
+        <TextInput value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} placeholder="Short bio" />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <PrimaryButton
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await updateAuthenticatedProfile({
+                name: form.name.trim(),
+                email: form.email.trim(),
+                department: form.department.trim() || undefined,
+                bio: form.bio.trim() || undefined,
+              });
+              setStatus("Teacher profile saved to database.");
+            } catch (error) {
+              setStatus(error instanceof Error ? error.message : "Could not save profile.");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          {saving ? "Saving..." : "Save settings"}
+        </PrimaryButton>
+        <p className="text-sm text-muted-foreground">{status}</p>
       </div>
     </Section>
   );

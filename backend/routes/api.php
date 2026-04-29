@@ -68,6 +68,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('auth.jwt')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::patch('/auth/me', [AuthController::class, 'updateMe']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
         Route::get('/bootstrap', [BootstrapController::class, 'show']);

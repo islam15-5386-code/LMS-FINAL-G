@@ -149,6 +149,33 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateMe(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user()->loadMissing('tenant');
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'department' => ['nullable', 'string', 'max:255'],
+            'bio' => ['nullable', 'string', 'max:2000'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $user->fill($validated);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'data' => [
+                'user' => LmsSupport::serializeUser($user->fresh()->loadMissing('tenant')),
+                'branding' => $user->tenant !== null ? LmsSupport::serializeBranding($user->tenant) : null,
+            ],
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $claims = $request->attributes->get('jwt_claims');

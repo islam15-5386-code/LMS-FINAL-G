@@ -221,11 +221,21 @@ function buildLocalMeetingUrl(title: string) {
 }
 
 function normalizeSchedulePayload(payload: ScheduleLiveClassPayload) {
+  const formatLocalTime = (value: Date) => {
+    const hours = String(value.getHours()).padStart(2, "0");
+    const minutes = String(value.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
   const date = payload.date ?? payload.startAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
-  const startTime = payload.startTime ?? payload.startAt?.slice(11, 16) ?? new Date().toISOString().slice(11, 16);
+  const startTime = payload.startTime ?? payload.startAt?.slice(11, 16) ?? formatLocalTime(new Date());
   const startAt = payload.startAt ?? `${date}T${startTime}`;
-  const startAtMs = Date.parse(startAt);
-  const endTime = payload.endTime ?? (Number.isNaN(startAtMs) ? startTime : new Date(startAtMs + payload.durationMinutes * 60 * 1000).toISOString().slice(11, 16));
+  const startAtDate = new Date(startAt);
+  const endTime =
+    payload.endTime ??
+    (Number.isNaN(startAtDate.getTime())
+      ? startTime
+      : formatLocalTime(new Date(startAtDate.getTime() + payload.durationMinutes * 60 * 1000)));
 
   return {
     ...payload,
@@ -233,7 +243,7 @@ function normalizeSchedulePayload(payload: ScheduleLiveClassPayload) {
     date,
     startTime,
     endTime,
-    meetingType: "jitsi" as const
+    meetingType: payload.meetingType ?? "jitsi"
   };
 }
 

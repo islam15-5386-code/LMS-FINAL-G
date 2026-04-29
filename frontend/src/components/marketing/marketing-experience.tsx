@@ -250,11 +250,17 @@ function PricingExperience() {
 }
 
 function CatalogExperience() {
+  const searchParams = useSearchParams();
   const { state } = useMockLms();
-  const [search, setSearch] = useState("");
+  const initialQuery = searchParams?.get("q") ?? "";
+  const [search, setSearch] = useState(initialQuery);
   const [catalogCourses, setCatalogCourses] = useState(state.courses.filter((course) => course.status === "published"));
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    setSearch(searchParams?.get("q") ?? "");
+  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -342,7 +348,7 @@ function CatalogExperience() {
 }
 
 function GenericMarketing({ slug }: { slug: string }) {
-  const content: Record<string, { title: string; body: string; cards: Array<{ title: string; body: string }> }> = {
+  const content: Record<string, { title: string; body: string; cards: Array<{ title: string; body: string; href?: string; action?: string }> }> = {
     features: {
       title: "Feature architecture for the Smart LMS",
       body: "The product combines multi-tenant management, course delivery, AI assessments, live classrooms, compliance tracking, certificates, and subscription billing in one frontend.",
@@ -374,9 +380,42 @@ function GenericMarketing({ slug }: { slug: string }) {
       title: "Interactive product demo",
       body: "Use the admin, teacher, and student routes to simulate the main SRS use cases directly in the browser.",
       cards: [
-        { title: "Quiz generation", body: "Teacher uploads notes and generates questions." },
-        { title: "Compliance reporting", body: "Admin exports audit-friendly reports." },
-        { title: "Certificates", body: "Generate and revoke branded completion records." }
+        {
+          title: "Quiz generation demo",
+          body: "Teacher uploads notes, generates AI draft questions, and publishes the assessment.",
+          href: "/teacher/assessments",
+          action: "Open teacher assessment lab"
+        },
+        {
+          title: "Content upload demo",
+          body: "Teacher uploads lesson files directly to module lessons and sees synced upload state from database.",
+          href: "/teacher/content-uploads",
+          action: "Open content uploads"
+        },
+        {
+          title: "Compliance reporting demo",
+          body: "Admin reviews learner completion data and exports compliance reports for audit workflows.",
+          href: "/admin/reports/compliance",
+          action: "Open compliance reports"
+        },
+        {
+          title: "Certificates demo",
+          body: "Admin verifies, issues, and revokes certificates while students can view earned certificates.",
+          href: "/admin/certificates",
+          action: "Open certificate management"
+        },
+        {
+          title: "Live class workflow demo",
+          body: "Teacher schedules live classes and students join from their own dashboard experience.",
+          href: "/teacher/live-classes",
+          action: "Open live class workspace"
+        },
+        {
+          title: "Teacher settings sync demo",
+          body: "Teacher edits profile/settings and saves directly to backend profile data.",
+          href: "/teacher/settings",
+          action: "Open teacher settings"
+        }
       ]
     },
     contact: {
@@ -409,10 +448,22 @@ function GenericMarketing({ slug }: { slug: string }) {
       <Section title={page.title} subtitle={page.body}>
         <div className="grid gap-4 xl:grid-cols-3">
           {page.cards.map((card) => (
-            <div key={card.title} className="rounded-[1.6rem] border border-foreground/10 bg-white p-5 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
-              <p className="font-serif text-3xl">{card.title}</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p>
-            </div>
+            card.href ? (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="rounded-[1.6rem] border border-foreground/10 bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-[#7C5CFF]/40 hover:shadow-glow dark:border-white/8 dark:bg-[#13212a]"
+              >
+                <p className="font-serif text-3xl">{card.title}</p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p>
+                {card.action ? <p className="mt-4 text-sm font-semibold text-[#4F46E5]">{card.action} →</p> : null}
+              </Link>
+            ) : (
+              <div key={card.title} className="rounded-[1.6rem] border border-foreground/10 bg-white p-5 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
+                <p className="font-serif text-3xl">{card.title}</p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p>
+              </div>
+            )
           ))}
         </div>
       </Section>

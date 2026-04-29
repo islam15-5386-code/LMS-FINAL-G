@@ -526,6 +526,29 @@ export async function fetchAuthenticatedProfile() {
   };
 }
 
+export async function updateAuthenticatedProfile(payload: {
+  name?: string;
+  email?: string;
+  department?: string;
+  bio?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+}) {
+  const response = await apiFetch("/api/v1/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+  const data = await unwrapResponse<{ data: { user: UserProfile; branding?: TenantBranding; vendor?: VendorSummary } }>(response);
+
+  return {
+    user: normalizeUser(data.data.user as unknown as Record<string, unknown>),
+    branding: data.data.branding ? normalizeBranding(data.data.branding as unknown as Record<string, unknown>) : null,
+    vendor: data.data.vendor ? normalizeVendor(data.data.vendor as unknown as Record<string, unknown>) : null,
+  };
+}
+
 export async function fetchAuthenticatedBootstrap() {
   const response = await apiFetch("/api/v1/bootstrap");
   const payload = await unwrapResponse<{ data: Partial<MockLmsState> }>(response);

@@ -282,17 +282,20 @@ export default function StudentCoursesPage() {
 
   return (
     <DashboardLayout role="student">
-      <div className="flex items-center justify-between">
-        <PageHeader title="My Courses" subtitle="Continue learning where you left off." />
-        <button 
-          onClick={fetchCourses} 
-          disabled={loadingCourses}
-          className="flex items-center gap-2 text-sm font-medium text-primary hover:opacity-80 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${loadingCourses ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
-      </div>
+      <PageHeader
+        title="My Courses"
+        subtitle="Continue learning where you left off."
+        actions={
+          <button
+            onClick={fetchCourses}
+            disabled={loadingCourses}
+            className="flex items-center gap-2 text-sm font-medium text-primary hover:opacity-80 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingCourses ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        }
+      />
 
       {alert ? (
         <div className={`mb-6 flex items-center justify-between rounded-xl p-4 text-sm ${alert.type === "success" ? "alert-success" : "alert-error"}`}>
@@ -692,4 +695,3 @@ export default function StudentCoursesPage() {
     </DashboardLayout>
   );
 }
-

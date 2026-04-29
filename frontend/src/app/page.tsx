@@ -71,14 +71,19 @@ export default function HomePage() {
         <div className="rounded-3xl border border-slate-200/90 bg-white/90 p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/70 sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Search Programs</p>
           <h2 className="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100 sm:text-3xl">Search 10,000+ learning programs</h2>
-          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition duration-300 hover:border-indigo-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:border-indigo-400 dark:hover:bg-slate-800">
+          <form
+            action="/catalog"
+            method="get"
+            className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition duration-300 hover:border-indigo-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:border-indigo-400 dark:hover:bg-slate-800"
+          >
             <Search className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             <input
               type="text"
+              name="q"
               placeholder="Try: Data Science, IELTS, HSC ICT, Software Engineering..."
               className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-500 focus:outline-none dark:text-slate-200 dark:placeholder:text-slate-400"
             />
-          </div>
+          </form>
         </div>
       </section>
 
