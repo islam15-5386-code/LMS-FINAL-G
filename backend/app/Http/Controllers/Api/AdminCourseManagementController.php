@@ -22,20 +22,28 @@ class AdminCourseManagementController extends Controller
 
         $courses = Course::query()
             ->withCount(['enrollments', 'teachers'])
+            ->with(['teacher:id,name,email', 'teachers:id'])
             ->latest()
             ->paginate($this->perPage($request));
 
         return response()->json([
-            'data' => $courses->getCollection()->map(fn (Course $course) => [
-                'id' => $course->id,
-                'title' => $course->title,
-                'category' => $course->category,
-                'teacher_id' => $course->teacher_id,
-                'status' => $course->status,
-                'enrollment_count' => $course->enrollments_count,
-                'teacher_count' => $course->teachers_count,
-                'created_at' => $course->created_at,
-            ]),
+            'data' => $courses->getCollection()->map(function (Course $course): array {
+                $legacyTeacherExtra = $course->teacher_id !== null
+                    ? (int) (!$course->teachers->contains('id', $course->teacher_id))
+                    : 0;
+
+                return [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'category' => $course->category,
+                    'teacher_id' => $course->teacher_id,
+                    'status' => $course->status,
+                    'enrollment_count' => $course->enrollments_count,
+                    // Merge legacy single-teacher column with pivot assignments.
+                    'teacher_count' => (int) $course->teachers_count + $legacyTeacherExtra,
+                    'created_at' => $course->created_at,
+                ];
+            }),
             'meta' => [
                 'currentPage' => $courses->currentPage(),
                 'lastPage' => $courses->lastPage(),
@@ -78,6 +86,18 @@ class AdminCourseManagementController extends Controller
             'email' => $user->email,
             'assigned_at' => $user->pivot->created_at,
         ]);
+
+        if ($course->teacher_id !== null && !$teachers->contains('id', $course->teacher_id)) {
+            $legacyTeacher = User::query()->find($course->teacher_id);
+            if ($legacyTeacher !== null && $legacyTeacher->tenant_id === $course->tenant_id) {
+                $teachers->prepend([
+                    'id' => $legacyTeacher->id,
+                    'name' => $legacyTeacher->name,
+                    'email' => $legacyTeacher->email,
+                    'assigned_at' => $course->updated_at,
+                ]);
+            }
+        }
 
         return response()->json(['data' => $teachers]);
     }
@@ -134,6 +154,12 @@ class AdminCourseManagementController extends Controller
                 );
         }
 
+        // Keep legacy field in sync for backward compatibility with older flows.
+        if ($course->teacher_id === null) {
+            $course->teacher_id = (int) $teachers->first()->id;
+            $course->save();
+        }
+
         return response()->json(['message' => 'Teachers assigned successfully.']);
     }
 
@@ -147,6 +173,10 @@ class AdminCourseManagementController extends Controller
         abort_unless($teacher->tenant_id === $course->tenant_id, 404, 'Teacher not found.');
 
         $course->teachers()->detach($teacher->id);
+        if ((int) $course->teacher_id === (int) $teacher->id) {
+            $course->teacher_id = null;
+            $course->save();
+        }
 
         return response()->json(['message' => 'Teacher removed from course.']);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bell, CheckCheck, ClipboardCheck, CreditCard, Lock, Mail, ReceiptText, SendHorizontal, TrendingUp, Users } from "lucide-react";
+import { Activity, Bell, CheckCheck, CheckCircle2, ClipboardCheck, CreditCard, GraduationCap, Hourglass, Lock, Mail, ReceiptText, SendHorizontal, TrendingUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -837,7 +837,13 @@ export function AdminCoursePanel() {
 
   if (selectedCourse) {
     return (
-      <AdminCourseDetails course={selectedCourse} onBack={() => setSelectedCourse(null)} />
+      <AdminCourseDetails
+        course={selectedCourse}
+        onBack={async () => {
+          setSelectedCourse(null);
+          await loadCourses();
+        }}
+      />
     );
   }
 
@@ -1068,17 +1074,17 @@ export function EnrollmentManagementPanel() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Enrollments", value: totalEnrollments, color: "from-blue-500 to-cyan-500", bg: "from-blue-500/10 to-cyan-500/10", icon: "👥" },
-          { label: "Active", value: activeEnrollments, color: "from-green-500 to-emerald-500", bg: "from-green-500/10 to-emerald-500/10", icon: "✓" },
-          { label: "Completed", value: completedEnrollments, color: "from-purple-500 to-pink-500", bg: "from-purple-500/10 to-pink-500/10", icon: "🎓" },
-          { label: "Pending", value: pendingEnrollments, color: "from-amber-500 to-orange-500", bg: "from-amber-500/10 to-orange-500/10", icon: "⏳" },
+          { label: "Total Enrollments", value: totalEnrollments, color: "from-blue-500 to-cyan-500", bg: "from-blue-500/10 to-cyan-500/10", icon: <Users className="h-6 w-6 text-blue-700 dark:text-blue-300" /> },
+          { label: "Active", value: activeEnrollments, color: "from-green-500 to-emerald-500", bg: "from-green-500/10 to-emerald-500/10", icon: <CheckCircle2 className="h-6 w-6 text-green-700 dark:text-green-300" /> },
+          { label: "Completed", value: completedEnrollments, color: "from-purple-500 to-pink-500", bg: "from-purple-500/10 to-pink-500/10", icon: <GraduationCap className="h-6 w-6 text-purple-700 dark:text-purple-300" /> },
+          { label: "Pending", value: pendingEnrollments, color: "from-amber-500 to-orange-500", bg: "from-amber-500/10 to-orange-500/10", icon: <Hourglass className="h-6 w-6 text-amber-700 dark:text-amber-300" /> },
         ].map((stat, idx) => (
-          <div key={idx} className={`rounded-xl p-4 bg-gradient-to-br ${stat.bg} border border-gradient-to-r ${stat.color} border-opacity-10`}>
+          <div key={idx} className={`rounded-xl p-4 bg-gradient-to-br ${stat.bg} border border-foreground/10`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-2xl">{stat.icon}</span>
+              <span>{stat.icon}</span>
             </div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{stat.label}</p>
-            <p className="text-3xl font-bold mt-2 bg-gradient-to-r ${stat.color} bg-clip-text text-transparent">{stat.value}</p>
+            <p className={`text-3xl font-bold mt-2 bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</p>
           </div>
         ))}
       </div>
@@ -1419,4 +1425,3 @@ export function PaymentsPanel() {
     </Section>
   );
 }
-
