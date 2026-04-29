@@ -62,6 +62,48 @@ type BackendSubmission = {
   submittedAt?: string;
 };
 
+export type StudentDashboardSummary = {
+  totalCourses: number;
+  totalAssessments: number;
+  activeLearners: number;
+  enrolledCourses: number;
+  averageProgress: number;
+  certificates: number;
+  upcomingLiveClasses: number;
+};
+
+export type StudentDashboardCourse = ReturnType<typeof normalizeCourse> & {
+  progressPercentage: number;
+  status: string;
+  thumbnail?: string | null;
+  enrolledAt?: string | null;
+  totalModules: number;
+  totalLessons: number;
+  completedLessons: number;
+};
+
+export type StudentDashboardCertificate = {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  issuedAt?: string | null;
+  verificationCode: string;
+};
+
+export type StudentDashboardPayload = {
+  summary: StudentDashboardSummary;
+  courses: StudentDashboardCourse[];
+  certificates: StudentDashboardCertificate[];
+  liveClasses: LiveClass[];
+  announcements: Array<{
+    id: string;
+    audience?: string;
+    type?: string;
+    message: string;
+    createdAt?: string;
+  }>;
+};
+
 type BackendAuthResponse = {
   token?: string;
   access_token?: string;
@@ -152,13 +194,17 @@ function normalizeCourse(course: Record<string, unknown>): Course {
       ? course.modules.map((module) => ({
           id: String((module as Record<string, unknown>).id),
           title: String((module as Record<string, unknown>).title ?? ""),
+          description: (module as Record<string, unknown>).description ? String((module as Record<string, unknown>).description) : null,
           dripDays: Number((module as Record<string, unknown>).dripDays ?? 0),
           lessons: Array.isArray((module as Record<string, unknown>).lessons)
             ? ((module as Record<string, unknown>).lessons as Array<Record<string, unknown>>).map((lesson) => ({
                 id: String(lesson.id),
                 title: String(lesson.title ?? ""),
+                description: lesson.description ? String(lesson.description) : null,
                 type: (lesson.type as Course["modules"][number]["lessons"][number]["type"]) ?? "video",
                 contentUrl: lesson.contentUrl ? String(lesson.contentUrl) : null,
+                youtubeUrl: lesson.youtubeUrl ? String(lesson.youtubeUrl) : null,
+                embedUrl: lesson.embedUrl ? String(lesson.embedUrl) : null,
                 contentMime: lesson.contentMime ? String(lesson.contentMime) : null,
                 contentOriginalName: lesson.contentOriginalName ? String(lesson.contentOriginalName) : null,
                 durationMinutes: Number(lesson.durationMinutes ?? 0),
@@ -176,8 +222,11 @@ function normalizeLesson(lesson: Record<string, unknown>): Lesson {
   return {
     id: String(lesson.id),
     title: String(lesson.title ?? ""),
+    description: lesson.description ? String(lesson.description) : null,
     type: (lesson.type as Lesson["type"]) ?? "video",
     contentUrl: lesson.contentUrl ? String(lesson.contentUrl) : null,
+    youtubeUrl: lesson.youtubeUrl ? String(lesson.youtubeUrl) : null,
+    embedUrl: lesson.embedUrl ? String(lesson.embedUrl) : null,
     contentMime: lesson.contentMime ? String(lesson.contentMime) : null,
     contentOriginalName: lesson.contentOriginalName ? String(lesson.contentOriginalName) : null,
     durationMinutes: Number(lesson.durationMinutes ?? 0),
@@ -833,6 +882,49 @@ export async function fetchMySubmissionsFromBackend(): Promise<StudentSubmission
   const response = await apiFetch("/api/v1/student/my-submissions");
   const payload = await unwrapResponse<{ data: StudentSubmission[] }>(response);
   return payload.data ?? [];
+}
+
+export async function fetchStudentDashboardFromBackend(): Promise<StudentDashboardPayload> {
+  const response = await apiFetch("/api/v1/student/dashboard");
+  const payload = await unwrapResponse<{ data: StudentDashboardPayload }>(response);
+  const data = payload.data;
+
+  return {
+    summary: {
+      totalCourses: Number(data.summary?.totalCourses ?? 0),
+      totalAssessments: Number(data.summary?.totalAssessments ?? 0),
+      activeLearners: Number(data.summary?.activeLearners ?? 0),
+      enrolledCourses: Number(data.summary?.enrolledCourses ?? 0),
+      averageProgress: Number(data.summary?.averageProgress ?? 0),
+      certificates: Number(data.summary?.certificates ?? 0),
+      upcomingLiveClasses: Number(data.summary?.upcomingLiveClasses ?? 0),
+    },
+    courses: (data.courses ?? []).map((course) => ({
+      ...normalizeCourse(course as unknown as Record<string, unknown>),
+      progressPercentage: Number((course as Record<string, unknown>).progressPercentage ?? 0),
+      status: String((course as Record<string, unknown>).status ?? "active"),
+      thumbnail: (course as Record<string, unknown>).thumbnail ? String((course as Record<string, unknown>).thumbnail) : null,
+      enrolledAt: (course as Record<string, unknown>).enrolledAt ? String((course as Record<string, unknown>).enrolledAt) : null,
+      totalModules: Number((course as Record<string, unknown>).totalModules ?? 0),
+      totalLessons: Number((course as Record<string, unknown>).totalLessons ?? 0),
+      completedLessons: Number((course as Record<string, unknown>).completedLessons ?? 0),
+    })),
+    certificates: (data.certificates ?? []).map((certificate) => ({
+      id: String(certificate.id),
+      courseId: String(certificate.courseId),
+      courseTitle: String(certificate.courseTitle ?? ""),
+      issuedAt: certificate.issuedAt ? String(certificate.issuedAt) : null,
+      verificationCode: String(certificate.verificationCode ?? ""),
+    })),
+    liveClasses: (data.liveClasses ?? []).map((liveClass) => normalizeLiveClass(liveClass as unknown as Record<string, unknown>)),
+    announcements: (data.announcements ?? []).map((announcement) => ({
+      id: String(announcement.id),
+      audience: announcement.audience ? String(announcement.audience) : undefined,
+      type: announcement.type ? String(announcement.type) : undefined,
+      message: String(announcement.message ?? ""),
+      createdAt: announcement.createdAt ? String(announcement.createdAt) : undefined,
+    })),
+  };
 }
 
 

@@ -37,16 +37,26 @@ class SslCommerzPaymentController extends Controller
             'transaction_id' => $tran_id,
         ]);
 
+        $storeId = (string) env('SSLCOMMERZ_STORE_ID', '');
+        $storePassword = (string) env('SSLCOMMERZ_STORE_PASSWORD', '');
+        if ($storeId === '' || $storePassword === '') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'SSLCommerz credentials are not configured.',
+            ], 422);
+        }
+
+        $appUrl = rtrim((string) env('APP_URL', 'http://127.0.0.1:8000'), '/');
         $post_data = [
-            'store_id' => env('SSLCOMMERZ_STORE_ID'),
-            'store_passwd' => env('SSLCOMMERZ_STORE_PASSWORD'),
+            'store_id' => $storeId,
+            'store_passwd' => $storePassword,
             'total_amount' => $course->price,
             'currency' => 'BDT',
             'tran_id' => $tran_id,
-            'success_url' => env('SSLCOMMERZ_SUCCESS_URL'),
-            'fail_url' => env('SSLCOMMERZ_FAIL_URL'),
-            'cancel_url' => env('SSLCOMMERZ_CANCEL_URL'),
-            'ipn_url' => env('SSLCOMMERZ_IPN_URL'),
+            'success_url' => env('SSLCOMMERZ_SUCCESS_URL', $appUrl . '/api/v1/payments/ssl/success'),
+            'fail_url' => env('SSLCOMMERZ_FAIL_URL', $appUrl . '/api/v1/payments/ssl/fail'),
+            'cancel_url' => env('SSLCOMMERZ_CANCEL_URL', $appUrl . '/api/v1/payments/ssl/cancel'),
+            'ipn_url' => env('SSLCOMMERZ_IPN_URL', $appUrl . '/api/v1/payments/ssl/ipn'),
             'cus_name' => $user->name,
             'cus_email' => $user->email,
             'cus_add1' => 'Dhaka',
@@ -84,9 +94,14 @@ class SslCommerzPaymentController extends Controller
         $val_id = $request->input('val_id');
         $amount = $request->input('amount');
         $currency = $request->input('currency');
+        $storeId = (string) env('SSLCOMMERZ_STORE_ID', '');
+        $storePassword = (string) env('SSLCOMMERZ_STORE_PASSWORD', '');
 
         if (!$val_id) {
             return redirect()->away(env('FRONTEND_URL', 'http://localhost:3000') . '/student/dashboard?payment=invalid');
+        }
+        if ($storeId === '' || $storePassword === '') {
+            return redirect()->away(env('FRONTEND_URL', 'http://localhost:3000') . '/student/dashboard?payment=config_error');
         }
 
         // Verify payment with SSLCommerz
@@ -95,8 +110,8 @@ class SslCommerzPaymentController extends Controller
         
         $response = Http::get($validation_url, [
             'val_id' => $val_id,
-            'store_id' => env('SSLCOMMERZ_STORE_ID'),
-            'store_passwd' => env('SSLCOMMERZ_STORE_PASSWORD'),
+            'store_id' => $storeId,
+            'store_passwd' => $storePassword,
             'format' => 'json'
         ]);
         

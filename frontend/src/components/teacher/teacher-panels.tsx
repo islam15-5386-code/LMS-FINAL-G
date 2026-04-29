@@ -1004,7 +1004,9 @@ export function LiveClassesPanel() {
   const { state, currentUser, scheduleLiveClass, setLiveClassStatus } = useMockLms();
   const availableCourses = state.courses.filter((course) => {
     if (currentUser?.role !== "teacher") return true;
-    const assignedTeacherIds = (course.teachers ?? []).map((teacher: any) => String(teacher.id));
+    const assignedTeacherIds = (
+      "teachers" in course && Array.isArray(course.teachers) ? course.teachers : []
+    ).map((teacher: { id?: string | number }) => String(teacher.id));
     return String(course.teacherId) === String(currentUser.id) || assignedTeacherIds.includes(String(currentUser.id));
   });
   const [showAllLiveClasses, setShowAllLiveClasses] = useState(false);

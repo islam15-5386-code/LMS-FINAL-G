@@ -3,6 +3,7 @@
 import type { CourseModule, LiveClass } from "@/lib/mock-lms";
 import { Award, BookOpen, CalendarClock, CheckCircle2, CheckCircle, XCircle, FileText, Sparkles, Video, ClipboardCheck, PenSquare, Play, RefreshCw, MessageSquare, Megaphone } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { YouTubePlayer } from "@/components/shared/youtube-player";
@@ -221,23 +222,73 @@ export function StudentAssessmentPanel() {
 }
 
 export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: string }) {
-  const { state, currentUser, markLessonComplete } = useMockLms();
+  const { state, currentUser, markLessonComplete, resetDemo } = useMockLms();
   const studentName = currentUser?.name ?? "Student";
   const [showAllCourses, setShowAllCourses] = useState(false);
   const [showAllModules, setShowAllModules] = useState(false);
   const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
-  const publishedCourses = state.courses.filter((course) => course.status === "published");
+  const [activeModuleId, setActiveModuleId] = useState<string>("");
+  const [activeLessonId, setActiveLessonId] = useState<string>("");
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+  const [lessonSearch, setLessonSearch] = useState("");
+  const publishedCourses = state.courses
+    .filter((course) => course.status === "published")
+    .sort((a, b) => {
+      const score = (course: typeof a) => {
+        const moduleCount = course.modules.length;
+        const lessonCount = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+        const videoCount = course.modules.reduce(
+          (sum, module) => sum + module.lessons.filter((lesson) => Boolean(lesson.contentUrl && /youtube\.com|youtu\.be/.test(lesson.contentUrl))).length,
+          0
+        );
+        return moduleCount * 1000 + lessonCount * 10 + videoCount;
+      };
+      return score(b) - score(a);
+    });
   const [activeCourseId, setActiveCourseId] = useState<string | undefined>(selectedCourseId);
   const selectedCourse = state.courses.find((course) => course.id === (activeCourseId || selectedCourseId)) ?? publishedCourses[0] ?? state.courses[0];
   const selectedCourseCertificate = state.certificates.find(
     (certificate) => certificate.courseId === selectedCourse?.id && certificate.studentName === studentName && !certificate.revoked
   );
-  const visibleCourses = showAllCourses ? publishedCourses : publishedCourses.slice(0, 5);
+  const visibleCourses = showAllCourses ? publishedCourses : publishedCourses.slice(0, 4);
   const visibleModules = showAllModules ? (selectedCourse?.modules ?? []) : (selectedCourse?.modules ?? []).slice(0, 5);
+  const selectedModule = selectedCourse?.modules.find((module) => module.id === activeModuleId) ?? selectedCourse?.modules[0];
+  const selectedLesson = selectedModule?.lessons.find((lesson) => lesson.id === activeLessonId) ?? selectedModule?.lessons[0];
+  const flattenedLessons = (selectedCourse?.modules ?? []).flatMap((module) =>
+    module.lessons.map((lesson) => ({ moduleId: module.id, moduleTitle: module.title, lesson }))
+  );
+  const currentLessonIndex = flattenedLessons.findIndex((item) => item.lesson.id === selectedLesson?.id);
+  const normalizedSearch = lessonSearch.trim().toLowerCase();
+
+  useEffect(() => {
+    if (!selectedCourse) return;
+    const firstModule = selectedCourse.modules[0];
+    const firstLesson = firstModule?.lessons[0];
+    if (!activeModuleId && firstModule) setActiveModuleId(firstModule.id);
+    if (!activeLessonId && firstLesson) setActiveLessonId(firstLesson.id);
+    setExpandedModules((current) => {
+      if (!firstModule) return current;
+      if (current[firstModule.id]) return current;
+      return { ...current, [firstModule.id]: true };
+    });
+  }, [selectedCourse, activeModuleId, activeLessonId]);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
       <Section title="My courses" subtitle="Progress, drip content, and next-step clarity are all visible from the learner side.">
+        <div className="mb-3 flex justify-end gap-2">
+          <SecondaryButton
+            onClick={async () => {
+              await resetDemo();
+              window.location.reload();
+            }}
+          >
+            Hard Refresh
+          </SecondaryButton>
+          <Link href="/catalog" className="btn-accent">
+            Browse Courses
+          </Link>
+        </div>
         <div className="grid gap-4">
           {visibleCourses.map((course, index) => {
             const isSelected = selectedCourse?.id === course.id;
@@ -272,92 +323,153 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
             </button>
           )})}
         </div>
-        {publishedCourses.length > 5 ? <SeeMoreButton expanded={showAllCourses} remaining={publishedCourses.length - 5} onClick={() => setShowAllCourses((current) => !current)} /> : null}
+        {publishedCourses.length > 4 ? <SeeMoreButton expanded={showAllCourses} remaining={publishedCourses.length - 4} onClick={() => setShowAllCourses((current) => !current)} /> : null}
       </Section>
 
       {selectedCourse ? (
         <Section title={selectedCourse.title} subtitle="Mark lessons complete and issue a certificate when the course is done.">
-          <div className="grid gap-4">
-            {visibleModules.map((module: CourseModule, index) => (
-              <div key={module.id} className={`workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} relative overflow-hidden rounded-[1.55rem] border p-4 shadow-soft dark:border-white/8 dark:bg-[#13212a] ${learnerModuleCardStyles[index % learnerModuleCardStyles.length]}`}>
-                <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${learnerAccentBars[index % learnerAccentBars.length]}`} />
-                <div className="flex items-center justify-between gap-3">
+          <div className="grid gap-4 xl:grid-cols-[1.45fr_0.95fr]">
+            <div className="rounded-[1.55rem] border p-4 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{selectedCourse.category}</p>
+              <p className="mt-2 font-serif text-3xl">{selectedCourse.title}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{selectedCourse.description}</p>
+              <div className="mt-4 overflow-hidden rounded-[1rem] border border-foreground/10 bg-black">
+                {selectedLesson?.contentUrl && /youtube\.com|youtu\.be/.test(selectedLesson.contentUrl) ? (
+                  <iframe
+                    className="aspect-video w-full"
+                    src={`https://www.youtube.com/embed/${
+                      selectedLesson.contentUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1] ??
+                      selectedLesson.contentUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)?.[1] ??
+                      ""
+                    }`}
+                    title={selectedLesson.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="flex aspect-video items-center justify-center text-sm text-white/70">Select a video lesson from Course Content.</div>
+                )}
+              </div>
+              {selectedLesson ? (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-semibold">{module.title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                      {module.lessons.filter((lesson) => lesson.completedBy.includes(studentName)).length}/{module.lessons.length} lessons completed
-                    </p>
+                    <p className="font-semibold">{selectedLesson.title}</p>
+                    <p className="text-xs text-muted-foreground">{selectedLesson.type} · {selectedLesson.durationMinutes} min</p>
                   </div>
-                  <Badge className="bg-white/75">Drip +{module.dripDays}d</Badge>
+                  <div className="flex items-center gap-2">
+                    <SecondaryButton
+                      onClick={() => {
+                        if (currentLessonIndex <= 0) return;
+                        const prev = flattenedLessons[currentLessonIndex - 1];
+                        if (!prev) return;
+                        setActiveModuleId(prev.moduleId);
+                        setActiveLessonId(prev.lesson.id);
+                        setExpandedModules((current) => ({ ...current, [prev.moduleId]: true }));
+                      }}
+                    >
+                      Previous
+                    </SecondaryButton>
+                    <PrimaryButton
+                      onClick={() => {
+                        if (currentLessonIndex < 0 || currentLessonIndex >= flattenedLessons.length - 1) return;
+                        const next = flattenedLessons[currentLessonIndex + 1];
+                        if (!next) return;
+                        setActiveModuleId(next.moduleId);
+                        setActiveLessonId(next.lesson.id);
+                        setExpandedModules((current) => ({ ...current, [next.moduleId]: true }));
+                      }}
+                    >
+                      Next
+                    </PrimaryButton>
+                  </div>
                 </div>
-                <div className="mt-4 grid gap-3">
-                  {module.lessons.map((lesson) => {
-                    const completed = lesson.completedBy.includes(studentName);
-                    const hasVideo = !!lesson.contentUrl && /youtube\.com|youtu\.be/.test(lesson.contentUrl);
-                    const videoId = hasVideo ? (lesson.contentUrl!.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1] ?? lesson.contentUrl!.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)?.[1]) : null;
-                    const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+              ) : null}
+            </div>
 
-                    return (
-                      <div key={lesson.id} className={`group flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-foreground/10 p-3 transition duration-300 hover:-translate-y-0.5 dark:border-white/8 ${completed ? "bg-[linear-gradient(135deg,rgba(15,118,110,0.08),rgba(255,255,255,0.78))]" : "bg-background/70 dark:bg-white/5"}`}>
-                        <div className="flex items-center gap-3 w-full sm:w-auto flex-1 min-w-0">
-                          {hasVideo && thumbnail ? (
-                            <button
-                              type="button"
-                              onClick={() => setActiveVideo({ url: lesson.contentUrl!, title: lesson.title })}
-                              className="relative w-20 h-12 rounded-lg overflow-hidden shrink-0 border border-border/50 group/video"
-                            >
-                              <img src={thumbnail} alt="" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover/video:bg-black/40 transition-colors">
-                                <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center">
-                                  <Play className="w-2.5 h-2.5 text-white fill-white ml-px" />
-                                </div>
-                              </div>
-                            </button>
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                              <FileText className="w-4 h-4 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{lesson.title}</p>
-                            <p className="text-xs text-muted-foreground">{lesson.type} · {lesson.durationMinutes} min</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 items-center flex-wrap shrink-0">
-                          {(lesson.contentUrl || lesson.type === "quiz" || lesson.type === "assignment") && (
-                            <SecondaryButton
-                              onClick={() => {
-                                if (hasVideo) {
-                                  setActiveVideo({ url: lesson.contentUrl!, title: lesson.title });
-                                } else if (lesson.type === "quiz" || lesson.type === "assignment") {
-                                  document.querySelector<HTMLButtonElement>('button[data-id="assessments"]')?.click();
-                                  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 100);
-                                } else {
-                                  window.open(lesson.contentUrl!, "_blank", "noopener,noreferrer");
-                                }
-                              }}
-                            >
-                              {hasVideo ? "Watch Video" : (lesson.type === "quiz" || lesson.type === "assignment") ? "Take Assessment" : "View PDF/Content"}
-                            </SecondaryButton>
-                          )}
-                          <Badge className={completed ? "border-[#4f46e5]/20 bg-[#4f46e5]/10 text-[#4f46e5]" : "bg-white/70"}>{completed ? "completed" : "pending"}</Badge>
-                          {!completed ? (
-                            <SecondaryButton onClick={() => markLessonComplete(selectedCourse.id, lesson.id, studentName)}>
-                              Mark complete
-                            </SecondaryButton>
-                          ) : (
-                            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-[#4f46e5] shadow-soft">
-                              <CheckCircle2 className="h-4 w-4" />
-                              Synced
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="rounded-[1.55rem] border p-4 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
+              <div className="mb-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="font-semibold">Course Content</p>
+                  <span className="text-sm font-semibold text-muted-foreground">{percentageForStudent(selectedCourse, studentName)}%</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#22c55e] via-[#34d399] to-[#16a34a] transition-all duration-700"
+                    style={{ width: `${Math.max(6, percentageForStudent(selectedCourse, studentName))}%` }}
+                  />
                 </div>
               </div>
-            ))}
+              <div className="mb-3">
+                <TextInput
+                  value={lessonSearch}
+                  onChange={(event) => setLessonSearch(event.target.value)}
+                  placeholder="Search Lesson"
+                />
+              </div>
+              <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                {visibleModules.map((module: CourseModule, index) => {
+                  const open = expandedModules[module.id] ?? index === 0;
+                  const visibleLessonsInModule = module.lessons.filter((lesson) => {
+                    if (!normalizedSearch) return true;
+                    return `${lesson.title} ${lesson.type}`.toLowerCase().includes(normalizedSearch);
+                  });
+                  return (
+                    <div key={module.id} className="rounded-xl border border-foreground/10 bg-background/70 p-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedModules((current) => ({ ...current, [module.id]: !open }))}
+                        className="flex w-full items-center justify-between text-left"
+                      >
+                        <div>
+                          <p className="font-semibold">Module {index + 1}: {module.title.replace(/^Module\s+\d+:\s*/i, "")}</p>
+                          <p className="text-xs text-muted-foreground">{visibleLessonsInModule.length}/{module.lessons.length} lessons</p>
+                        </div>
+                        <span className="text-sm text-muted-foreground">{open ? "−" : "+"}</span>
+                      </button>
+                      {open ? (
+                        <div className="mt-3 space-y-2">
+                          {visibleLessonsInModule.map((lesson, lIndex) => {
+                            const isActive = lesson.id === selectedLesson?.id;
+                            const completed = lesson.completedBy.includes(studentName);
+                            return (
+                              <button
+                                key={lesson.id}
+                                type="button"
+                                onClick={() => {
+                                  setActiveModuleId(module.id);
+                                  setActiveLessonId(lesson.id);
+                                }}
+                                className={`w-full rounded-lg border px-3 py-2 text-left transition ${isActive ? "border-primary/40 bg-primary/10" : "border-foreground/10 bg-white/70 hover:border-primary/30"}`}
+                              >
+                                <p className="text-sm font-medium">{index + 1}-{lIndex + 1} {lesson.title.replace(/^Module\s+\d+:\s*/i, "")}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">{lesson.durationMinutes} min · {lesson.type}</p>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <Badge className={completed ? "border-[#4f46e5]/20 bg-[#4f46e5]/10 text-[#4f46e5]" : "bg-white/70"}>
+                                    {completed ? "completed" : "pending"}
+                                  </Badge>
+                                  {!completed ? (
+                                    <span
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void markLessonComplete(selectedCourse.id, lesson.id, studentName);
+                                      }}
+                                      className="cursor-pointer text-xs font-semibold text-primary"
+                                    >
+                                      Mark done
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {selectedCourse.modules.length > 5 ? <SeeMoreButton expanded={showAllModules} remaining={selectedCourse.modules.length - 5} onClick={() => setShowAllModules((current) => !current)} /> : null}
             {selectedCourseCertificate ? (
               <PrimaryButton

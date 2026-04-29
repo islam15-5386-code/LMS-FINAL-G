@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\SslCommerzPaymentController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\StripePaymentController;
+use App\Http\Controllers\Api\StudentDashboardController;
 use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\AdminCourseManagementController;
 use App\Http\Controllers\Api\ExternalApiController;
@@ -90,6 +91,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/courses', [CourseController::class, 'index']);
         Route::post('/courses', [CourseController::class, 'store']);
         Route::get('/courses/{course}', [CourseController::class, 'show']);
+        Route::get('/courses/{course}/modules', [CourseController::class, 'modules']);
+        Route::get('/courses/{course}/assessments', [CourseController::class, 'assessments']);
+        Route::get('/modules/{module}/lessons', [CourseController::class, 'moduleLessons']);
         Route::get('/courses/{course}/students', [CourseController::class, 'students']);
         Route::patch('/courses/{course}/assessment-gate', [CourseController::class, 'toggleAssessmentGate']);
         Route::post('/courses/{course}/assign-teacher', [AdminCourseManagementController::class, 'assignTeachers'])->middleware('role:admin');
@@ -107,10 +111,12 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
         Route::middleware('role:student')->group(function (): void {
+            Route::get('/student/dashboard', [StudentDashboardController::class, 'show']);
             Route::get('/student/my-courses', [EnrollmentController::class, 'myCourses']);
             Route::get('/student/courses', [EnrollmentController::class, 'myCourses']);
             Route::get('/student/my-submissions', [EnrollmentController::class, 'mySubmissions']);
             Route::get('/student/live-classes', [LiveClassController::class, 'index']);
+            Route::get('/student/announcements', [StudentDashboardController::class, 'announcements']);
         });
 
         Route::get('/payments', [PaymentController::class, 'index']);

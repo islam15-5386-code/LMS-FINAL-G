@@ -59,8 +59,11 @@ export type CourseInstructor = {
 export type Lesson = {
   id: string;
   title: string;
+  description?: string | null;
   type: LessonType;
   contentUrl?: string | null;
+  youtubeUrl?: string | null;
+  embedUrl?: string | null;
   contentMime?: string | null;
   contentOriginalName?: string | null;
   durationMinutes: number;
@@ -72,6 +75,7 @@ export type Lesson = {
 export type CourseModule = {
   id: string;
   title: string;
+  description?: string | null;
   dripDays: number;
   lessons: Lesson[];
 };

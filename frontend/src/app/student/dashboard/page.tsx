@@ -6,31 +6,27 @@ import { BookOpen, Award, Video, CheckCircle, Clock, ArrowRight } from "lucide-r
 import { DashboardLayout, PageHeader, StatsCard, StatusBadge, ProgressBar } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { percentageForStudent } from "@/lib/utils/lms-helpers";
-import { fetchMyCoursesFromBackend, getStoredToken } from "@/lib/api/lms-backend";
+import { fetchStudentDashboardFromBackend, getStoredToken, type StudentDashboardPayload } from "@/lib/api/lms-backend";
 
 export default function StudentDashboardPage() {
   const { state, currentUser } = useMockLms();
   const [loading, setLoading] = useState(true);
-  const [backendCourses, setBackendCourses] = useState<any[] | null>(null);
-  const [backendAssessments, setBackendAssessments] = useState<any[]>([]);
+  const [backendPayload, setBackendPayload] = useState<StudentDashboardPayload | null>(null);
 
   const fetchCourses = useCallback(async () => {
     const token = getStoredToken();
     if (!token) {
-      setBackendCourses([]);
-      setBackendAssessments([]);
+      setBackendPayload(null);
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const result = await fetchMyCoursesFromBackend();
-      setBackendCourses(result.courses);
-      setBackendAssessments(result.assessments);
+      const result = await fetchStudentDashboardFromBackend();
+      setBackendPayload(result);
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      // Fallback to local
-      setBackendCourses(null);
+      setBackendPayload(null);
     } finally {
       setLoading(false);
     }
@@ -43,7 +39,7 @@ export default function StudentDashboardPage() {
   const studentName = currentUser?.name ?? state.users.find((u) => u.role === "student")?.name ?? "Student";
 
   const enrolledCourses = useMemo(() => {
-    if (backendCourses !== null) return backendCourses;
+    if (backendPayload?.courses) return backendPayload.courses;
 
     const actorId = currentUser?.id;
     const enrolledCourseIds = state.enrollments
@@ -51,14 +47,44 @@ export default function StudentDashboardPage() {
       .map((e) => e.courseId);
 
     return state.courses.filter((c) => enrolledCourseIds.includes(c.id));
-  }, [backendCourses, state.enrollments, state.courses, currentUser, studentName]);
+  }, [backendPayload, state.enrollments, state.courses, currentUser, studentName]);
 
-  const myCerts = state.certificates.filter((c) => c.studentName === studentName && !c.revoked);
-  const upcomingClasses = state.liveClasses.filter((lc) => lc.status !== "recorded").slice(0, 3);
+  const myCerts = backendPayload?.certificates ?? state.certificates.filter((c) => c.studentName === studentName && !c.revoked);
+  const upcomingClasses = backendPayload?.liveClasses?.slice(0, 3) ?? state.liveClasses.filter((lc) => lc.status !== "recorded").slice(0, 3);
+  const announcements = backendPayload?.announcements
+    ?? state.notifications.filter((n) => n.audience === "Student" || n.audience === "All").slice(0, 4);
 
-  const avgProgress = enrolledCourses.length > 0
-    ? Math.round(enrolledCourses.reduce((sum, c) => sum + (c.progressPercentage ?? 0), 0) / enrolledCourses.length)
-    : 0;
+  const progressFromCourse = (course: (typeof enrolledCourses)[number]) => {
+    if ("progressPercentage" in course && typeof course.progressPercentage === "number") {
+      return course.progressPercentage;
+    }
+    return percentageForStudent(course, studentName) ?? 0;
+  };
+
+  const completedLessonsFromCourse = (course: (typeof enrolledCourses)[number]) => {
+    if ("completedLessonsCount" in course && typeof course.completedLessonsCount === "number") {
+      return course.completedLessonsCount;
+    }
+    if ("completedLessons" in course && typeof course.completedLessons === "number") {
+      return course.completedLessons;
+    }
+    return 0;
+  };
+
+  const totalLessonsFromCourse = (course: (typeof enrolledCourses)[number]) => {
+    if ("lessonsCount" in course && typeof course.lessonsCount === "number") {
+      return course.lessonsCount;
+    }
+    if ("totalLessons" in course && typeof course.totalLessons === "number") {
+      return course.totalLessons;
+    }
+    return course.modules?.reduce((sum, module) => sum + module.lessons.length, 0) ?? 0;
+  };
+
+  const avgProgress = backendPayload?.summary?.averageProgress
+    ?? (enrolledCourses.length > 0
+      ? Math.round(enrolledCourses.reduce((sum, c) => sum + progressFromCourse(c), 0) / enrolledCourses.length)
+      : 0);
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -76,32 +102,53 @@ export default function StudentDashboardPage() {
 
       <div className="stats-grid mb-8">
         <StatsCard
-          label="Enrolled Courses"
-          value={loading ? "—" : enrolledCourses.length}
+          label="Total Courses"
+          value={loading ? "—" : (backendPayload?.summary?.totalCourses ?? enrolledCourses.length)}
           icon={<BookOpen className="w-5 h-5" />}
           iconBg="bg-blue-500/10"
           iconColor="text-blue-500"
         />
         <StatsCard
-          label="Avg. Progress"
-          value={loading ? "—" : `${avgProgress}%`}
+          label="Total Assessments"
+          value={loading ? "—" : (backendPayload?.summary?.totalAssessments ?? 0)}
           icon={<CheckCircle className="w-5 h-5" />}
           iconBg="bg-teal-500/10"
           iconColor="text-teal-500"
         />
         <StatsCard
-          label="Certificates"
-          value={loading ? "—" : myCerts.length}
+          label="Active Learners"
+          value={loading ? "—" : (backendPayload?.summary?.activeLearners ?? 0)}
           icon={<Award className="w-5 h-5" />}
           iconBg="bg-yellow-500/10"
           iconColor="text-yellow-500"
         />
         <StatsCard
-          label="Upcoming Classes"
-          value={loading ? "—" : upcomingClasses.length}
+          label="Enrolled Courses"
+          value={loading ? "—" : (backendPayload?.summary?.enrolledCourses ?? enrolledCourses.length)}
           icon={<Video className="w-5 h-5" />}
           iconBg="bg-purple-500/10"
           iconColor="text-purple-500"
+        />
+        <StatsCard
+          label="Avg. Progress"
+          value={loading ? "—" : `${avgProgress}%`}
+          icon={<CheckCircle className="w-5 h-5" />}
+          iconBg="bg-emerald-500/10"
+          iconColor="text-emerald-500"
+        />
+        <StatsCard
+          label="Certificates"
+          value={loading ? "—" : (backendPayload?.summary?.certificates ?? myCerts.length)}
+          icon={<Award className="w-5 h-5" />}
+          iconBg="bg-amber-500/10"
+          iconColor="text-amber-500"
+        />
+        <StatsCard
+          label="Upcoming Classes"
+          value={loading ? "—" : (backendPayload?.summary?.upcomingLiveClasses ?? upcomingClasses.length)}
+          icon={<Clock className="w-5 h-5" />}
+          iconBg="bg-indigo-500/10"
+          iconColor="text-indigo-500"
         />
       </div>
 
@@ -124,11 +171,11 @@ export default function StudentDashboardPage() {
             ) : (
               <div className="grid gap-3">
                 {enrolledCourses.slice(0, 4).map((course) => {
-                  const pct = course.progressPercentage ?? 0;
-                  const completedCount = course.completedLessonsCount ?? 0;
-                  const totalCount = course.lessonsCount ?? 0;
+                  const pct = progressFromCourse(course);
+                  const completedCount = completedLessonsFromCourse(course);
+                  const totalCount = totalLessonsFromCourse(course);
                   return (
-                    <div key={course.id} className="card-sm hover:-translate-y-0.5 transition-all">
+                    <Link key={course.id} href={`/student/courses?courseId=${course.id}`} className="card-sm hover:-translate-y-0.5 transition-all block">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
                           <BookOpen className="w-5 h-5 text-blue-500" />
@@ -144,7 +191,7 @@ export default function StudentDashboardPage() {
                         <span className={`text-sm font-bold ${pct === 100 ? "text-success" : "text-foreground"}`}>{pct}%</span>
                       </div>
                       <ProgressBar value={pct} />
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -168,7 +215,9 @@ export default function StudentDashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{cert.courseTitle}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(cert.issuedAt).toLocaleDateString("en-BD", { dateStyle: "medium" })}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString("en-BD", { dateStyle: "medium" }) : "Date unavailable"}
+                      </p>
                     </div>
                     <span className="font-mono text-xs text-primary">{cert.verificationCode}</span>
                   </div>
@@ -188,16 +237,16 @@ export default function StudentDashboardPage() {
                 View all <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-            {state.notifications.filter((n) => n.audience === "Student" || n.audience === "All").length === 0 ? (
+            {announcements.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No new announcements.</p>
             ) : (
               <div className="grid gap-3">
-                {state.notifications.filter((n) => n.audience === "Student" || n.audience === "All").slice(0, 4).map((n) => (
+                {announcements.map((n) => (
                   <div key={n.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
                     <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
                     <div>
                       <p className="text-sm text-foreground leading-snug">{n.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1 capitalize">{n.type}</p>
+                      <p className="text-xs text-muted-foreground mt-1 capitalize">{n.type ?? "announcement"}</p>
                     </div>
                   </div>
                 ))}

@@ -419,8 +419,11 @@ class LmsSupport
         return [
             'id' => $lesson->id,
             'title' => $lesson->title,
+            'description' => $lesson->description,
             'type' => $lesson->type,
             'contentUrl' => $lesson->content_url,
+            'youtubeUrl' => $lesson->youtube_url,
+            'embedUrl' => $lesson->embed_url,
             'contentMime' => $lesson->content_mime,
             'contentOriginalName' => $lesson->content_original_name,
             'durationMinutes' => $lesson->duration_minutes,
@@ -439,6 +442,7 @@ class LmsSupport
         return [
             'id' => $module->id,
             'title' => $module->title,
+            'description' => $module->description,
             'dripDays' => $module->drip_days,
             'lessons' => $module->lessons
                 ->sortBy('position')

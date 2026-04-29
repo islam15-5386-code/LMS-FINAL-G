@@ -30,6 +30,106 @@ type AssessmentResult = {
   status?: string;
 };
 
+const demoCourseFallback: Course = {
+  id: "demo-course-fullstack",
+  title: "Full Stack Web Development (Demo Track)",
+  category: "Development",
+  description: "Module-wise guided path with video classes, quiz checkpoints, and practical assignments.",
+  status: "published",
+  price: 0,
+  enrollmentCount: 1,
+  modules: [
+    {
+      id: "demo-module-1",
+      title: "Module 1: HTML & CSS Foundations",
+      dripDays: 0,
+      lessons: [
+        { id: "demo-m1-l1", title: "Class Video: HTML Full Course", type: "video", contentUrl: "https://www.youtube.com/watch?v=pQN-pnXPaVg", durationMinutes: 120, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m1-l2", title: "Module 1 Quiz", type: "quiz", durationMinutes: 20, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m1-l3", title: "Assignment: Build Landing Page", type: "assignment", durationMinutes: 60, releaseAt: new Date().toISOString(), completedBy: [] }
+      ]
+    },
+    {
+      id: "demo-module-2",
+      title: "Module 2: JavaScript Core",
+      dripDays: 0,
+      lessons: [
+        { id: "demo-m2-l1", title: "Class Video: JavaScript Beginner Course", type: "video", contentUrl: "https://www.youtube.com/watch?v=PkZNo7MFNFg", durationMinutes: 210, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m2-l2", title: "Module 2 Quiz", type: "quiz", durationMinutes: 25, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m2-l3", title: "Assignment: Interactive To-Do App", type: "assignment", durationMinutes: 90, releaseAt: new Date().toISOString(), completedBy: [] }
+      ]
+    },
+    {
+      id: "demo-module-3",
+      title: "Module 3: React & Frontend App",
+      dripDays: 0,
+      lessons: [
+        { id: "demo-m3-l1", title: "Class Video: React Course", type: "video", contentUrl: "https://www.youtube.com/watch?v=bMknfKXIFA8", durationMinutes: 720, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m3-l2", title: "Module 3 Quiz", type: "quiz", durationMinutes: 30, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m3-l3", title: "Assignment: Student Dashboard UI", type: "assignment", durationMinutes: 120, releaseAt: new Date().toISOString(), completedBy: [] }
+      ]
+    },
+    {
+      id: "demo-module-4",
+      title: "Module 4: Backend API with Node/Express",
+      dripDays: 0,
+      lessons: [
+        { id: "demo-m4-l1", title: "Class Video: Node.js + Express Course", type: "video", contentUrl: "https://www.youtube.com/watch?v=Oe421EPjeBE", durationMinutes: 480, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m4-l2", title: "Module 4 Quiz", type: "quiz", durationMinutes: 30, releaseAt: new Date().toISOString(), completedBy: [] },
+        { id: "demo-m4-l3", title: "Assignment: REST API + Auth", type: "assignment", durationMinutes: 150, releaseAt: new Date().toISOString(), completedBy: [] }
+      ]
+    }
+  ]
+};
+
+const demoCourseFallback2: Course = {
+  ...demoCourseFallback,
+  id: "demo-course-laravel",
+  title: "Laravel Backend Development (Demo Track)",
+  category: "Backend",
+  description: "API-first backend journey with authentication, database design, and production readiness.",
+};
+
+const demoCourseFallback3: Course = {
+  ...demoCourseFallback,
+  id: "demo-course-flutter",
+  title: "Flutter App Development (Demo Track)",
+  category: "Mobile Development",
+  description: "Module-wise Flutter learning path from Dart basics to app architecture and deployment.",
+};
+
+const demoAssessmentsFallback: Assessment[] = [
+  {
+    id: "demo-assess-m1",
+    courseId: "demo-course-fullstack",
+    title: "Module 1 Quiz",
+    type: "MCQ",
+    status: "published",
+    generatedFrom: "HTML and CSS basics",
+    questionCount: 2,
+    questions: [
+      { id: "demo-q1", prompt: "Which tag defines the largest heading?", options: ["<h1>", "<head>", "<header>", "<title>"], answer: "<h1>" },
+      { id: "demo-q2", prompt: "Which CSS property changes text color?", options: ["font-style", "text-color", "color", "background"], answer: "color" }
+    ],
+    rubricKeywords: ["html", "css"],
+    teacherReviewed: true
+  },
+  {
+    id: "demo-assess-m2",
+    courseId: "demo-course-fullstack",
+    title: "Module 2 Assignment Review",
+    type: "Essay",
+    status: "published",
+    generatedFrom: "JavaScript app logic",
+    questionCount: 1,
+    questions: [
+      { id: "demo-q3", prompt: "Explain event loop and apply it in your to-do app.", options: [], answer: "" }
+    ],
+    rubricKeywords: ["javascript", "event loop"],
+    teacherReviewed: true
+  }
+];
+
 export default function StudentCoursesPage() {
   const { state, currentUser, markLessonComplete, submitAssessment } = useMockLms();
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
@@ -123,12 +223,46 @@ export default function StudentCoursesPage() {
     return state.courses.filter((c) => enrolledCourseIds.includes(c.id));
   }, [backendCourses, state.enrollments, state.courses, currentUser, studentName]);
 
-  const activeCourse = enrolledCourses.find((course) => course.id === selectedCourse) ?? enrolledCourses[0];
+  const prioritizedCourses = useMemo(() => {
+    const sourceCourses = enrolledCourses.length > 0 ? enrolledCourses : [demoCourseFallback];
+
+    const scoreCourse = (course: Course) => {
+      const moduleCount = course.modules.length;
+      const lessonCount = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+      const videoCount = course.modules.reduce(
+        (sum, module) =>
+          sum +
+          module.lessons.filter((lesson) => {
+            const url = lesson.youtubeUrl ?? lesson.contentUrl;
+            return Boolean(url && extractYouTubeId(url) !== null);
+          }).length,
+        0
+      );
+
+      return moduleCount * 1000 + lessonCount * 10 + videoCount;
+    };
+
+    const sorted = [...sourceCourses].sort((a, b) => scoreCourse(b) - scoreCourse(a));
+    if (sorted.length >= 3) return sorted;
+
+    const fallbackPool = [demoCourseFallback, demoCourseFallback2, demoCourseFallback3].filter(
+      (fallback) => !sorted.some((course) => course.id === fallback.id)
+    );
+
+    return [...sorted, ...fallbackPool].slice(0, 3);
+  }, [enrolledCourses]);
+
+  const displayCourses = prioritizedCourses;
+  const activeCourse = displayCourses.find((course) => course.id === selectedCourse) ?? displayCourses[0];
 
 
   const coursePublishedAssessments = useMemo(() => {
     if (!activeCourse) return [];
-    const sourceAssessments = backendAssessments.length > 0 ? backendAssessments : state.assessments;
+    const sourceAssessments = backendAssessments.length > 0
+      ? backendAssessments
+      : activeCourse.id === demoCourseFallback.id
+        ? demoAssessmentsFallback
+        : state.assessments;
     return sourceAssessments.filter((a) => a.courseId === activeCourse.id && a.status === "published");
   }, [activeCourse, backendAssessments, state.assessments]);
 
@@ -321,17 +455,10 @@ export default function StudentCoursesPage() {
             <p className="text-sm font-medium text-muted-foreground">Fetching your courses...</p>
           </div>
         </div>
-      ) : enrolledCourses.length === 0 ? (
-        <EmptyState
-          icon={<BookOpen className="h-8 w-8" />}
-          title="No courses found"
-          description={getStoredToken() ? "You haven't enrolled in any courses yet." : "Please sign in to access your enrolled courses."}
-          action={<Link href="/catalog" className="btn-accent">Browse Catalog</Link>}
-        />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="grid content-start gap-3">
-            {enrolledCourses.map((course) => {
+            {displayCourses.map((course) => {
               const percentage = percentageForStudent(course, studentName);
               const isActive = course.id === activeCourse?.id;
 
@@ -390,7 +517,7 @@ export default function StudentCoursesPage() {
                   return (
                     <div key={module.id} className={`rounded-2xl border p-4 ${gateLocksModule ? "border-amber-200 bg-amber-50/40" : "border-border bg-card/40"}`}>
                       <div className="mb-3 flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground">{module.title}</p>
+                        <p className="text-sm font-semibold text-foreground">Module {moduleIndex + 1}: {module.title}</p>
                         <span className="text-xs text-muted-foreground">({module.lessons.length} lessons)</span>
                         {gateLocksModule ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
@@ -404,6 +531,9 @@ export default function StudentCoursesPage() {
                         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                           Complete and pass the previous module assessment to unlock this module.
                         </div>
+                      ) : null}
+                      {module.description ? (
+                        <p className="mb-3 text-xs leading-5 text-muted-foreground">{module.description}</p>
                       ) : null}
 
                       <div className="grid gap-2">
@@ -473,6 +603,7 @@ export default function StudentCoursesPage() {
                                     {hasVideo ? <span className="ml-1.5 font-medium text-red-500">Video</span> : null}
                                     {hasFile && lesson.contentOriginalName ? <span className="ml-1.5 text-blue-600">· {lesson.contentOriginalName}</span> : null}
                                   </p>
+                                  {lesson.description ? <p className="mt-1 text-xs text-muted-foreground">{lesson.description}</p> : null}
                                 </div>
 
                                 <div className="flex shrink-0 flex-wrap items-center gap-2">

@@ -13,6 +13,7 @@ class CourseModule extends Model
     protected $fillable = [
         'course_id',
         'title',
+        'description',
         'drip_days',
         'position',
     ];

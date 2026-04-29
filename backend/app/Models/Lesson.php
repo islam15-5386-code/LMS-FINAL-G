@@ -13,7 +13,10 @@ class Lesson extends Model
     protected $fillable = [
         'course_module_id',
         'title',
+        'description',
         'content_url',
+        'youtube_url',
+        'embed_url',
         'content_mime',
         'content_original_name',
         'type',

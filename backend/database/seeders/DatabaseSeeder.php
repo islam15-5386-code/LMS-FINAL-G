@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             NotificationSeeder::class,
             AuditLogSeeder::class,
             DemoLmsSeeder::class,   // Adds Betopia Academy demo with Bangladeshi names
+            CourseContentSeeder::class,
         ]);
     }
 }

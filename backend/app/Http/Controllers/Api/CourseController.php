@@ -152,6 +152,54 @@ class CourseController extends Controller
         ]);
     }
 
+    public function modules(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->userFromRequest($request);
+        $this->guardTenantCourse($user, $course);
+
+        $modules = $course->modules()
+            ->with('lessons.completedUsers:id,name')
+            ->orderBy('position')
+            ->get();
+
+        return response()->json([
+            'data' => $modules->map(fn (CourseModule $module): array => LmsSupport::serializeModule($module, $user))->all(),
+        ]);
+    }
+
+    public function moduleLessons(Request $request, CourseModule $module): JsonResponse
+    {
+        $user = $this->userFromRequest($request);
+        $course = $module->course;
+        abort_if($course === null, 404, 'Course not found.');
+        $this->guardTenantCourse($user, $course);
+
+        $lessons = $module->lessons()
+            ->with('completedUsers:id,name')
+            ->orderBy('position')
+            ->get();
+
+        return response()->json([
+            'data' => $lessons->map(fn (Lesson $lesson): array => LmsSupport::serializeLesson($lesson, $user))->all(),
+        ]);
+    }
+
+    public function assessments(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->userFromRequest($request);
+        $this->guardTenantCourse($user, $course);
+
+        $assessments = $course->assessments()
+            ->with('questions')
+            ->where('status', 'published')
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'data' => $assessments->map(fn ($assessment): array => LmsSupport::serializeAssessment($assessment))->all(),
+        ]);
+    }
+
     public function publish(Request $request, Course $course): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);
