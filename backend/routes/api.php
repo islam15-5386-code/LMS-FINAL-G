@@ -108,6 +108,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/courses/{course}/modules/{module}/lessons/reorder', [CourseController::class, 'reorderLessons']);
         Route::post('/courses/{course}/modules/{module}/lessons/{lesson}/content', [CourseController::class, 'uploadLessonContent']);
         Route::post('/courses/{course}/lessons/{lesson}/complete', [CourseController::class, 'completeLesson']);
+        Route::post('/lessons/{lesson}/complete', [CourseController::class, 'completeLessonById']);
 
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
         Route::middleware('role:student')->group(function (): void {

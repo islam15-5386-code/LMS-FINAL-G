@@ -28,3 +28,5 @@ backend/storage/framework/views/*
 Thumbs.db
 
 .git_broken_*/
+
+backend/database/*.sqlite

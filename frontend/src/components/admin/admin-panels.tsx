@@ -814,7 +814,15 @@ export function UserDirectoryPanel({ roleFilter }: { roleFilter?: "teacher" | "s
   );
 }
 
-export function AdminCoursePanel({ refreshKey = 0 }: { refreshKey?: number }) {
+export function AdminCoursePanel({
+  refreshKey = 0,
+  viewMode = "grid",
+  search = "",
+}: {
+  refreshKey?: number;
+  viewMode?: "grid" | "list";
+  search?: string;
+}) {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
@@ -835,6 +843,13 @@ export function AdminCoursePanel({ refreshKey = 0 }: { refreshKey?: number }) {
     void loadCourses();
   }, [refreshKey]);
 
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleCourses = courses.filter((course) => {
+    if (!normalizedSearch) return true;
+    const haystack = `${course.title ?? ""} ${course.category ?? ""} ${course.code ?? ""}`.toLowerCase();
+    return haystack.includes(normalizedSearch);
+  });
+
   if (selectedCourse) {
     return (
       <AdminCourseDetails
@@ -852,16 +867,16 @@ export function AdminCoursePanel({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="grid gap-4">
         {loading ? (
           <p>Loading courses...</p>
-        ) : courses.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course) => (
+        ) : visibleCourses.length > 0 ? (
+          <div className={viewMode === "grid" ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-3"}>
+            {visibleCourses.map((course) => (
               <div key={course.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-4 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className={`gap-3 ${viewMode === "grid" ? "flex items-start justify-between" : "flex items-center justify-between"}`}>
+                  <div className="min-w-0">
                     <p className="font-semibold">{course.title}</p>
                     <p className="text-sm text-muted-foreground mt-1">{course.teacher_count || 0} teachers · {course.enrollment_count || 0} students</p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className={`flex ${viewMode === "grid" ? "flex-col items-end" : "flex-row items-center"} gap-2`}>
                     <Badge className={course.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>{course.status}</Badge>
                     <SecondaryButton onClick={() => setSelectedCourse(course)} className="px-3 py-1.5 text-xs">Manage</SecondaryButton>
                   </div>
@@ -870,7 +885,7 @@ export function AdminCoursePanel({ refreshKey = 0 }: { refreshKey?: number }) {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">No courses found.</p>
+          <p className="text-muted-foreground">No courses found for this search.</p>
         )}
       </div>
     </Section>

@@ -53,13 +53,6 @@ class CourseController extends Controller
 
         $courses = Course::query()
             ->where('tenant_id', $user->tenant_id)
-            ->when(
-                $user->role === 'teacher',
-                fn ($query) => $query->where(function ($inner) use ($user): void {
-                    $inner->where('teacher_id', $user->id)
-                        ->orWhereHas('teachers', fn ($teacherQuery) => $teacherQuery->where('users.id', $user->id));
-                })
-            )
             ->withCount('enrollments')
             ->when(
                 $request->filled('search'),
@@ -417,6 +410,14 @@ class CourseController extends Controller
             'message' => 'Lesson marked as completed.',
             'data' => LmsSupport::serializeLesson($lesson->fresh()->load('completedUsers:id,name'), $user),
         ]);
+    }
+
+    public function completeLessonById(Request $request, Lesson $lesson): JsonResponse
+    {
+        $course = $lesson->module?->course;
+        abort_if($course === null, 404, 'Course not found for this lesson.');
+
+        return $this->completeLesson($request, $course, $lesson);
     }
 
     public function uploadLessonContent(Request $request, Course $course, CourseModule $module, Lesson $lesson): JsonResponse

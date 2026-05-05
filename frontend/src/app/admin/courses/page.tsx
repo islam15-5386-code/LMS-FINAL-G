@@ -129,7 +129,7 @@ export default function AdminCoursesPage() {
       </div>
 
       <div className="space-y-6">
-        <AdminCoursePanel refreshKey={refreshKey} />
+        <AdminCoursePanel refreshKey={refreshKey} viewMode={viewMode} search={search} />
       </div>
 
       {showCreate && (

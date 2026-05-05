@@ -74,7 +74,7 @@ export type StudentDashboardSummary = {
 
 export type StudentDashboardCourse = ReturnType<typeof normalizeCourse> & {
   progressPercentage: number;
-  status: string;
+  enrollmentStatus: string;
   thumbnail?: string | null;
   enrolledAt?: string | null;
   totalModules: number;
@@ -902,7 +902,7 @@ export async function fetchStudentDashboardFromBackend(): Promise<StudentDashboa
     courses: (data.courses ?? []).map((course) => ({
       ...normalizeCourse(course as unknown as Record<string, unknown>),
       progressPercentage: Number((course as Record<string, unknown>).progressPercentage ?? 0),
-      status: String((course as Record<string, unknown>).status ?? "active"),
+      enrollmentStatus: String((course as Record<string, unknown>).status ?? "active"),
       thumbnail: (course as Record<string, unknown>).thumbnail ? String((course as Record<string, unknown>).thumbnail) : null,
       enrolledAt: (course as Record<string, unknown>).enrolledAt ? String((course as Record<string, unknown>).enrolledAt) : null,
       totalModules: Number((course as Record<string, unknown>).totalModules ?? 0),
@@ -1090,8 +1090,8 @@ export async function uploadLessonContentOnBackend(
   return unwrapResponse<{ data: unknown }>(response);
 }
 
-export async function completeLessonOnBackend(courseId: string, lessonId: string) {
-  const response = await apiFetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/complete`, {
+export async function completeLessonOnBackend(_courseId: string, lessonId: string) {
+  const response = await apiFetch(`/api/v1/lessons/${lessonId}/complete`, {
     method: "POST"
   });
 

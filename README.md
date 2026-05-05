@@ -1,5 +1,8 @@
 # Smart LMS - Full Project Setup Guide (Windows/macOS/Linux)
 
+> [!TIP]
+> **New to the project?** Check out the [⚡ QUICKSTART GUIDE](README-QUICKSTART.md) to get running in one command.
+
 This guide explains:
 - What this project is
 - Project structure

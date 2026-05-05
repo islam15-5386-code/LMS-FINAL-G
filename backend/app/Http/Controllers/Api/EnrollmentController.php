@@ -29,12 +29,19 @@ class EnrollmentController extends Controller
             ->pluck('course_id');
 
         $enrollments = Enrollment::query()
-            ->where(['tenant_id' => $user->tenant_id])
-            ->where(['student_id' => $user->id])
-            ->whereIn('status', ['active', 'completed'])
-            ->orWhere(function($query) use ($user, $paidCourseIds) {
-                $query->where('student_id', $user->id)
-                      ->whereIn('course_id', $paidCourseIds);
+            ->where('tenant_id', $user->tenant_id)
+            ->where(function ($query) use ($user, $paidCourseIds): void {
+                $query
+                    ->where(function ($activeEnrollmentQuery) use ($user): void {
+                        $activeEnrollmentQuery
+                            ->where('student_id', $user->id)
+                            ->whereIn('status', ['active', 'completed']);
+                    })
+                    ->orWhere(function ($paidEnrollmentQuery) use ($user, $paidCourseIds): void {
+                        $paidEnrollmentQuery
+                            ->where('student_id', $user->id)
+                            ->whereIn('course_id', $paidCourseIds);
+                    });
             })
             ->with(['course.modules.lessons.completedUsers:id,name', 'course.teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'])
             ->latest('enrolled_at')
